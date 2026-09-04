@@ -1,6 +1,6 @@
 # RET — Timing Evidence Report
 
-**Team:** <names> · **Boards:** <serials/nicknames> · **Living** document: updated
+**Team:** Joshua · **Boards:** ESP32-C6-DevKitC · **Living** document: updated
 every week; handed in at the workshop (week 8) and at the close (week 16).
 House rule: *"show me the trace"* — every timing claim cites a measurement.
 
@@ -12,10 +12,18 @@ system shall <response> within <deadline>*) — then the task that implements th
 | ID | Requirement |
 |---|---|
 | REQ-CTRL-01 | While the system is irrigating, the control loop shall run every 10 ms (deadline = period). |
+| REQ-CTRL-02 | When line pressure exceeds the safety threshold, the system shall close the valve within 5 ms. |
+| REQ-CTRL-03 | While the system is irrigating, the system shall sample the flow and pressure sensors at 1 kHz with bounded jitter. |
+| REQ-CTRL-04 | While the link to the Hub is up, the system shall send a telemetry frame every 1000 ms. |
+| REQ-CTRL-05 | When an operator command arrives on the console, the system shall respond within 200 ms. |
 
 | Task | Req. | Type (H/F/S) | Period | Deadline | Measured C_i | How it was measured |
 |---|---|---|---|---|---|---|
-| Control loop | REQ-CTRL-01 | Hard | 10 ms | = T | ____ | <GPIO + analyzer / trace> |
+| Control loop      | REQ-CTRL-01 | Hard | 10 ms    | = T    | ____ | GPIO + analyzer |
+| Emergency stop    | REQ-CTRL-02 | Hard | sporadic | 5 ms   | ____ | GPIO + analyzer |
+| Sensor sampling   | REQ-CTRL-03 | Hard | 1 ms     | = T    | ____ | GPIO + analyzer |
+| Telemetry         | REQ-CTRL-04 | Soft | 1000 ms  | best effort | ____ | trace |
+| Command console   | REQ-CTRL-05 | Firm | sporadic | 200 ms | ____ | trace |
 
 ## 2. ADRs
 
