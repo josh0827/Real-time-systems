@@ -9,24 +9,43 @@ setup steps, dead ends, error messages and the reasoning behind our choices,
 so that any of us can reproduce a result months later without deriving it
 again from scratch.
 
-**Format for each entry**
+<details>
+<summary><b>How to write an entry</b></summary>
 
-| Field | Meaning |
-|---|---|
-| Goal | What the session was supposed to achieve |
-| Setup | Hardware and toolchain actually used |
-| What we did | The steps that worked, as commands |
-| Problems | What broke, the real cause, and the fix |
-| Result | What we can demonstrate at the end |
-| Open items | What is still missing |
+Each entry keeps the same shape. Goal, Result and Open items stay visible so
+the file can be scanned; the long sections are collapsed.
+
+| Field | Meaning | Collapsed |
+|---|---|---|
+| Goal | What the session was supposed to achieve | no |
+| Setup | Hardware and toolchain actually used | yes |
+| What we did | The steps that worked, as commands | yes |
+| Problems | What broke, the real cause, and the fix | yes, one block per problem |
+| Result | What we can demonstrate at the end | no |
+| Open items | What is still missing | no |
+
+Collapsible blocks are plain HTML, which GitHub renders as an accordion:
+
+```markdown
+<details>
+<summary>Title</summary>
+
+Content.
+
+</details>
+```
+
+The blank line after `</summary>` is mandatory. Without it the markdown inside
+is rendered as literal text.
+
+</details>
 
 ---
 
 ## Entry 01: Week 1 bring-up
 
-**Date:** 2026-09-03
-**Lab:** `labs/lab01_bringup.md`
-**Author:** Joshua
+**Date:** 2026-09-03 · **Lab:** `labs/lab01_bringup.md` · **Author:** Joshua
+· **Board:** ESP32-C6-DevKitC
 
 ### Goal
 
@@ -34,7 +53,8 @@ Get a working build, flash and monitor cycle on a physical board and on
 `native_sim`, and create the team RET from the course template. No timing
 measurements this week: the deliverable is the environment itself.
 
-### Setup
+<details>
+<summary><b>Setup</b></summary>
 
 | Item | Value |
 |---|---|
@@ -53,7 +73,10 @@ the ESP32-C6 we already own. The build, flash and monitor workflow is identical
 except for the board target; only the LED sample had to change, for the reason
 described below. The C0116-DK run is still pending.
 
-### What we did
+</details>
+
+<details>
+<summary><b>What we did</b></summary>
 
 Every command runs from inside the west workspace, with the virtualenv active:
 
@@ -98,9 +121,13 @@ west build -p always -b native_sim ~/lab01/hello_lab01 --build-dir /tmp/nsim
 timeout 5 /tmp/nsim/zephyr/zephyr.exe
 ```
 
-### Problems
+</details>
 
-**`samples/basic/blinky` does not build for this board.**
+<details>
+<summary><b>Problems</b> (4)</summary>
+
+<details>
+<summary><code>samples/basic/blinky</code> does not build for this board</summary>
 
 ```
 main.c:15:19: error: '__device_dts_ord_DT_N_ALIAS_led0...' undeclared
@@ -143,7 +170,10 @@ The sample defaults are unusable as evidence: with `chain-length = 1` and a
 50 ms delay the LED cycles too fast to read, and brightness 16 of 255 barely
 registers on camera. We raised them to 500 ms and 64.
 
-**`west espressif monitor` fails with "could not find build configuration".**
+</details>
+
+<details>
+<summary><code>west espressif monitor</code> fails with "could not find build configuration"</summary>
 
 The command does not accept `--build-dir`. Its implementation calls
 `find_build_dir(None, True)` with the argument hardcoded, so it only works when
@@ -154,7 +184,10 @@ wildcard the guess became ambiguous and failed, even for `--help`.
 Fix: drop the custom `build.dir-fmt` and keep builds in the default
 `~/zephyrproject/build`. Then `flash` and `monitor` both work with no flags.
 
-**`bind` persists, `attach` does not.**
+</details>
+
+<details>
+<summary><code>bind</code> persists, <code>attach</code> does not</summary>
 
 `usbipd bind` writes a flag to the Windows registry and survives reboots.
 `usbipd attach` opens a live TCP connection carrying the USB/IP protocol to the
@@ -166,8 +199,16 @@ Use the **CH343** UART bridge, not the ESP32 native USB (`303a:1001`). The
 native interface disappears from the bus every time the chip resets, and the
 chip resets in the middle of flashing, which drops the attach halfway through.
 
-**The `native_sim` binary never exits.** It sits in the RTOS idle loop, so any
-script has to wrap it in `timeout`.
+</details>
+
+<details>
+<summary>The <code>native_sim</code> binary never exits</summary>
+
+It sits in the RTOS idle loop, so any script has to wrap it in `timeout`.
+
+</details>
+
+</details>
 
 ### Result
 
