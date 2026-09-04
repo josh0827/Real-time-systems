@@ -1,0 +1,9 @@
+# temporales de editores
+*.swp
+*~
+.DS_Store
+
+# builds de Zephyr (56 MB cada uno, se regeneran)
+build/
+build-*/
+twister-out*/
