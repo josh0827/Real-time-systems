@@ -1,0 +1,26 @@
+============================================================================
+ROW 4 - flash cache ON vs OFF, identical binary source
+============================================================================
+
+  C_i, mean instrumentation pulse width
+  task                           cache ON    cache OFF    penalty
+  --------------------------------------------------------------
+  task_sampling                   4.95 us      7.28 us    +47.0 %
+  task_control                    1.35 us      2.51 us    +85.8 %
+  task_telemetry               5980.36 us   6217.19 us     +4.0 %
+
+  Sampling period, normal regime only (500 us to 1500 us)
+    cache ON   n=49698  min 993.75  mean 999.02  max 1004.50  jitter 10.75 us
+    cache OFF  n=49703  min 888.00  mean 998.83  max 1007.25  jitter 119.25 us
+
+  Telemetry blocking, the I/O-bound part
+    cache ON   n=50  mean 6.76 ms
+    cache OFF  n=50  mean 6.99 ms
+    change: +3.43 %
+
+============================================================================
+  ROW 4 answer: sampling jitter, max, cache off
+    over the whole capture : 6979.00 us
+    normal regime only     : 119.25 us
+    row 2 was 6753.25 us / 10.75 us in the normal regime
+============================================================================

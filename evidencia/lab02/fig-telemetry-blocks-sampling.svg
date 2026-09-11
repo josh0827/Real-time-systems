@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 484" width="1120" font-family="ui-monospace,Menlo,Consolas,monospace">
+<rect width="1120" height="484" fill="#fbfaf8"/>
+<text x="170" y="32" font-size="17" font-weight="700" fill="#1a1a1a">Idle: the soft telemetry task blocks the hard sampling task</text>
+<text x="170" y="54" font-size="12.5" fill="#555">NUCLEO-L476RG superloop · rendered from baseline-50s-4MHz.vcd · window 40 ms at t = 22.55 s</text>
+<line x1="170" y1="88" x2="1090" y2="88" stroke="#bbb"/>
+<line x1="170.0" y1="83" x2="170.0" y2="88" stroke="#bbb"/>
+<text x="170.0" y="77" font-size="11" fill="#666" text-anchor="middle">22534 ms</text>
+<line x1="285.0" y1="83" x2="285.0" y2="88" stroke="#bbb"/>
+<text x="285.0" y="77" font-size="11" fill="#666" text-anchor="middle">22540 ms</text>
+<line x1="400.0" y1="83" x2="400.0" y2="88" stroke="#bbb"/>
+<text x="400.0" y="77" font-size="11" fill="#666" text-anchor="middle">22544 ms</text>
+<line x1="515.0" y1="83" x2="515.0" y2="88" stroke="#bbb"/>
+<text x="515.0" y="77" font-size="11" fill="#666" text-anchor="middle">22550 ms</text>
+<line x1="630.0" y1="83" x2="630.0" y2="88" stroke="#bbb"/>
+<text x="630.0" y="77" font-size="11" fill="#666" text-anchor="middle">22554 ms</text>
+<line x1="745.0" y1="83" x2="745.0" y2="88" stroke="#bbb"/>
+<text x="745.0" y="77" font-size="11" fill="#666" text-anchor="middle">22560 ms</text>
+<line x1="860.0" y1="83" x2="860.0" y2="88" stroke="#bbb"/>
+<text x="860.0" y="77" font-size="11" fill="#666" text-anchor="middle">22564 ms</text>
+<line x1="975.0" y1="83" x2="975.0" y2="88" stroke="#bbb"/>
+<text x="975.0" y="77" font-size="11" fill="#666" text-anchor="middle">22570 ms</text>
+<line x1="1090.0" y1="83" x2="1090.0" y2="88" stroke="#bbb"/>
+<text x="1090.0" y="77" font-size="11" fill="#666" text-anchor="middle">22574 ms</text>
+<rect x="624.5" y="94" width="155.4" height="322" fill="#d92b2b" opacity="0.07"/>
+<line x1="624.5" y1="94" x2="624.5" y2="412" stroke="#d92b2b" stroke-width="1.4" stroke-dasharray="4 3"/>
+<line x1="779.9" y1="94" x2="779.9" y2="412" stroke="#d92b2b" stroke-width="1.4" stroke-dasharray="4 3"/>
+<line x1="624.5" y1="442.0" x2="779.9" y2="442.0" stroke="#d92b2b" stroke-width="1.4"/>
+<text x="702.2" y="463.0" font-size="14" font-weight="700" fill="#d92b2b" text-anchor="middle">6.75 ms with no sampling at all = 6 ticks</text>
+<text x="12" y="130" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_samp</text>
+<text x="12" y="143" font-size="10.5" fill="#777">D0 · sampling 1 kHz</text>
+<line x1="170" y1="130.0" x2="1090" y2="130.0" stroke="#ddd"/>
+<rect x="187.89" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="210.91" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="233.87" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="256.89" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="279.79" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="302.80" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="325.83" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="348.74" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="371.76" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="394.67" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="417.68" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="440.70" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="463.68" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="486.57" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="509.58" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="532.61" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="555.51" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="578.52" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="601.42" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="624.42" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="779.89" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="780.17" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="780.49" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="780.78" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="781.06" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="781.34" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="785.32" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="808.22" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="831.23" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="854.26" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="877.16" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="900.18" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="923.13" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="946.16" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="969.07" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="992.09" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="1014.99" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="1038.00" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="1061.03" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<rect x="1083.93" y="110.0" width="1.00" height="20.0" fill="#1f5c8b"/>
+<text x="12" y="176" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_ctrl</text>
+<text x="12" y="189" font-size="10.5" fill="#777">D1 · control 10 ms</text>
+<line x1="170" y1="176.0" x2="1090" y2="176.0" stroke="#ddd"/>
+<rect x="211.04" y="156.0" width="1.00" height="20.0" fill="#2e7d4f"/>
+<rect x="440.83" y="156.0" width="1.00" height="20.0" fill="#2e7d4f"/>
+<rect x="780.30" y="156.0" width="1.00" height="20.0" fill="#2e7d4f"/>
+<rect x="900.31" y="156.0" width="1.00" height="20.0" fill="#2e7d4f"/>
+<text x="12" y="222" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_cons</text>
+<text x="12" y="235" font-size="10.5" fill="#777">D2 · console</text>
+<line x1="170" y1="222.0" x2="1090" y2="222.0" stroke="#ddd"/>
+<text x="178" y="216.0" font-size="11" fill="#aaa">flat</text>
+<text x="12" y="268" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_tele</text>
+<text x="12" y="281" font-size="10.5" fill="#777">D3 · telemetry 1 Hz</text>
+<line x1="170" y1="268.0" x2="1090" y2="268.0" stroke="#ddd"/>
+<rect x="642.33" y="248.0" width="137.52" height="20.0" fill="#b3541e"/>
+<text x="12" y="314" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_flow</text>
+<text x="12" y="327" font-size="10.5" fill="#777">D4 · flow batch</text>
+<line x1="170" y1="314.0" x2="1090" y2="314.0" stroke="#ddd"/>
+<text x="178" y="308.0" font-size="11" fill="#aaa">flat</text>
+<text x="12" y="360" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_disp</text>
+<text x="12" y="373" font-size="10.5" fill="#777">D5 · display</text>
+<line x1="170" y1="360.0" x2="1090" y2="360.0" stroke="#ddd"/>
+<text x="178" y="354.0" font-size="11" fill="#aaa">flat</text>
+<text x="12" y="406" font-size="12.5" font-weight="700" fill="#1a1a1a">flow_pulse</text>
+<text x="12" y="419" font-size="10.5" fill="#777">D6 · flow input</text>
+<line x1="170" y1="406.0" x2="1090" y2="406.0" stroke="#ddd"/>
+<text x="178" y="400.0" font-size="11" fill="#aaa">flat</text>
+</svg>

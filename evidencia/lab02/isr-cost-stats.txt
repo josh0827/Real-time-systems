@@ -1,0 +1,15 @@
+========================================================================
+Control periods classified by how many flow ISRs fired inside them
+(telemetry and flow-batch periods excluded, so the ISR is the only
+ difference left between the groups)
+========================================================================
+
+  flow ISRs |  count |     mean |      min |      max | over 10 ms
+  ----------|--------|----------|----------|----------|-----------
+      0     |   2406 |  9989.55 |  9144.75 | 15128.25 |     2 (  0.1 %)
+      1     |   2457 |  9940.94 |  5042.50 | 10005.25 |   704 ( 28.7 %)
+
+  cost of 1 flow ISR(s): -48.61 us   -> -48.61 us per interrupt
+
+  margin of the control loop against its 10 ms deadline
+  with no flow input at all: 10.45 us  (0.1045 % of the period)

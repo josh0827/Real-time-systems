@@ -1,0 +1,91 @@
+Week 2 - console evidence, SoilSense superloop
+Board: NUCLEO-L476RG (nucleo_l476rg/stm32l476xx), ST-LINK VCP on COM16, 115200 8N1
+Build: west build -p -b nucleo_l476rg firmware/superloop
+       FLASH 25492 B / 1 MB (2.43%), RAM 3840 B / 96 KB (3.91%)
+Flashed by copying build/zephyr/zephyr.bin to the ST-LINK mass storage volume
+(E:, label NODE_L476RG, ST-LINK firmware V2J46M31). No FAIL.TXT was produced.
+Date: 2026-09-10
+Plant: synthetic (no pot wired), setpoint 1500 mV, board otherwise idle.
+
+=== 1. Free-running telemetry, 1 Hz, board idle =========================
+
+t=14000 p_mv=1515 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=6
+t=15000 p_mv=1509 sp_mv=1500 duty=46 flow_x100=0 estop=0 backlog=6
+
+The PI loop is regulating: pressure sits on the 1500 mV setpoint with duty
+around 45 %.
+
+=== 2. Console answers, so the superloop is running =====================
+
+help
+commands: help status joy set <mv> clear calib
+t=16000 p_mv=1502 sp_mv=1500 duty=44 flow_x100=0 estop=0 backlog=6
+
+status
+p=1506 mV sp=1500 mV duty=45% flow_x100=0 estop=0 batches=0 backlog_peak=6
+t=17000 p_mv=1499 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=6
+
+=== 3. Baseline backlog, before the blocking command ====================
+
+status
+p=1510 mV sp=1500 mV duty=45% flow_x100=0 estop=0 batches=0 backlog_peak=6
+t=29000 p_mv=1485 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=7
+
+IDLE backlog_peak = 6 ticks.
+
+Not 1. Even with nobody touching the board, the 1 Hz telemetry line already
+piles up six 1 kHz ticks. The line is 67 characters including the newline; at
+115200 8N1 each character costs 10 bits, so
+
+    67 x 10 / 115200 = 5.82 ms
+
+of polled-UART blocking inside task_telemetry(), which rounds to 6 pending
+ticks. The firmware's own counter and the baud-rate arithmetic agree. The soft
+task is already stealing the hard task's deadline: REQ-CTRL-04 is violated at
+idle, before any fault is injected.
+
+=== 4. Task C: the blocking command ====================================
+
+calib
+calibrating zero-flow offset (1000 rounds)...
+calibration done
+t=30123 p_mv=1503 sp_mv=1500 duty=44 flow_x100=0 estop=0 backlog=410
+t=31000 p_mv=1500 sp_mv=1500 duty=44 flow_x100=0 estop=0 backlog=416
+t=32000 p_mv=1502 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=416
+
+status
+p=1483 mV sp=1500 mV duty=46% flow_x100=0 estop=0 batches=0 backlog_peak=416
+t=33000 p_mv=1485 sp_mv=1500 duty=47 flow_x100=0 estop=0 backlog=416
+
+DURING calib backlog_peak = 416 ticks.
+
+Root cause, cmd_calib() in firmware/superloop/src/main.c:400:
+
+    for (int i = 0; i < CALIB_ROUNDS; i++) {   /* CALIB_ROUNDS = 1000 */
+            (void)read_pressure_mv();
+            k_busy_wait(400);                  /* line 405 */
+    }
+
+It is reached synchronously: cmd_calib() from console_handle() (line 430), from
+task_console() (line 448), which is the first call in the superloop (line 498).
+k_busy_wait() spins on the CPU without yielding, and there is no scheduler to
+take it away.
+
+    1000 x 400 us of busy wait        = 400 ms
+    1000 ADC reads at roughly 16 us   =  16 ms
+                                        ------
+                                        416 ms
+
+416 ms during which the loop never reaches task_sampling(), against a timer
+that fires every 1 ms: 416 ticks. Measured 416. The arithmetic and the
+firmware's counter agree to the tick.
+
+Also visible in the timestamps: the telemetry line due at t=30000 arrived at
+t=30123, so the soft task was pushed 123 ms late by the same command.
+
+=== 5. Rows this fills in RET section 3 ================================
+
+Row 6, backlog_peak idle -> during the blocking command: 6 -> 416 ticks.
+Verifies REQ-CTRL-04 and REQ-CTRL-08, both violated.
+
+Rows 1 to 5 still need the logic analyzer.
