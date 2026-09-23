@@ -532,3 +532,199 @@ Four results worth carrying forward:
   and timing detection to actuation would measure it end to end.
 - Add David and Ismael as collaborators on this repository.
 - Install the Xtensa toolchain before week 3, and buy the ESP32-S3.
+
+---
+
+## Entry 03: Week 3 the S3 port and the first thread
+
+**Date:** 2026-09-23 · **Lab:** `labs/lab03_port.md` · **Author:** Joshua
+· **Board:** none yet (ESP32-S3-DevKitC not delivered) · **Team:** Joshua, David Henao Rojas, Ismael Cortés Ramírez
+
+### Goal
+
+Write the ESP32-S3 pin map as a devicetree overlay and move the week-2 superloop
+onto the new silicon without touching a line of C (Task A), then lift sampling
+out of the loop into a preemptive thread fed by a message queue (Task C). The
+board has not arrived, so the target for this session was everything that can be
+finished and verified without it: both firmwares written, building clean, and a
+measurement protocol ready to run the day it lands.
+
+<details>
+<summary><b>Setup</b></summary>
+
+- WSL2 `Ubuntu-24.04`, Zephyr v4.4.0 in `~/zephyrproject`, venv at
+  `~/zephyrproject/.venv`.
+- Course repo `~/4101137-real-time-systems` pulled to `2c69dd3` (which is what
+  brought `firmware/sampling_thread/`, the week-3 reference).
+- **New toolchain:** `xtensa-espressif_esp32s3_zephyr-elf`. The SDK only had
+  `riscv64-zephyr-elf` (C6) and `arm-zephyr-eabi` (Nucleo). Installed with
+  `cd ~/zephyr-sdk-1.0.1 && ./setup.sh -t xtensa-espressif_esp32s3_zephyr-elf`.
+  This is the third architecture the course has needed.
+- No board attached, so verification is: clean build, devicetree dump, and a
+  `native_sim` run that proves the image boots and the thread does not fault.
+
+</details>
+
+<details>
+<summary><b>What we did</b></summary>
+
+Task A, the overlay, written from the pin table in
+`firmware/superloop/README.md` rather than copied from the reference:
+
+```bash
+$EDITOR ~/4101137-real-time-systems/firmware/superloop/boards/esp32s3_devkitc_esp32s3_procpu.overlay
+cd ~/zephyrproject && source .venv/bin/activate
+west build -p -b esp32s3_devkitc/esp32s3/procpu ~/4101137-real-time-systems/firmware/superloop
+west build -p -b esp32s3_devkitc/esp32s3/procpu ~/4101137-real-time-systems/firmware/superloop \
+    -- -DEXTRA_CONF_FILE=display.conf          # the HMI path, to exercise i2c0
+```
+
+The check that the overlay is actually in the build, which matters because the
+guide warns the build succeeds without it:
+
+```bash
+grep -A1 'instr_samp:\|valve_out:\|flow_pulse:' build/zephyr/zephyr.dts
+```
+
+All eight nodes resolve onto `&gpio0` at the intended pins, each line annotated
+by dtc with the overlay path it came from.
+
+Task C applied as four edits to `main.c` and `prj.conf` (the STEPs exactly as the
+guide writes them), built, then extracted as a patch and reverted, so the tree
+stays on the superloop that column 2 of the table needs first:
+
+```bash
+west build -p -b esp32s3_devkitc/esp32s3/procpu ~/4101137-real-time-systems/firmware/superloop
+west build -p -b native_sim ~/4101137-real-time-systems/firmware/superloop
+timeout 5 ./build/zephyr/zephyr.exe      # boots, banner prints, no fault
+diff -ruN pa pb > ~/ret-equipo/evidencia/lab03/lab03-task-c.patch
+git apply --check ~/ret-equipo/evidencia/lab03/lab03-task-c.patch
+```
+
+Evidence written to `evidencia/lab03/`: the overlay, `port-diffstat.txt`, the
+Task C patch, and a README with the wiring and capture protocol.
+
+</details>
+
+<details>
+<summary><b>Problem 1: the reference overlay puts i2c0 on pins Zephyr does not use</b></summary>
+
+The firmware README and the professor's reference overlay both document the HMI
+on **SDA GPIO8 / SCL GPIO9**, and the reference enables the bus with
+`status = "okay"` and nothing else. Those are the ESP-IDF and Arduino defaults,
+not Zephyr's. The board file
+`zephyr/boards/espressif/esp32s3_devkitc/esp32s3_devkitc-pinctrl.dtsi` defines:
+
+```dts
+i2c0_default: i2c0_default {
+        group1 {
+                pinmux = <I2C0_SDA_GPIO1>,
+                         <I2C0_SCL_GPIO2>;
+```
+
+So enabling `i2c0` as the reference does lands the display on GPIO1/GPIO2, and
+**GPIO2 is the ADC1 channel `pot_esp32.overlay` claims for pressure**. Both
+would be driven at once as soon as the HMI and the pot are used together.
+
+Fix: declare our own pinctrl node in the overlay and point the bus at it.
+
+```dts
+&pinctrl {
+        i2c0_hmi: i2c0_hmi {
+                group1 {
+                        pinmux = <I2C0_SDA_GPIO8>, <I2C0_SCL_GPIO9>;
+                        bias-pull-up;
+                        drive-open-drain;
+                        output-high;
+                };
+        };
+};
+
+&i2c0 {
+        status = "okay";
+        pinctrl-0 = <&i2c0_hmi>;
+        pinctrl-names = "default";
+        clock-frequency = <I2C_BITRATE_FAST>;
+```
+
+Needs `#include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>`, which the
+reference does not include because it never names a pin. Worth confirming with
+the analyzer on GPIO8/GPIO9 once the board is here.
+
+</details>
+
+<details>
+<summary><b>Problem 2: the SDK had no Xtensa toolchain, and the failure would have looked like a board problem</b></summary>
+
+`~/zephyr-sdk-1.0.1` only carried `riscv64-zephyr-elf` and `arm-zephyr-eabi`.
+The S3 is Xtensa, a third architecture, and without it the build fails at
+toolchain selection rather than at anything to do with the port. Installed in
+one command and it took a few minutes:
+
+```bash
+cd ~/zephyr-sdk-1.0.1 && ./setup.sh -t xtensa-espressif_esp32s3_zephyr-elf
+```
+
+This was the last open item of entry 02 and is now closed.
+
+</details>
+
+<details>
+<summary><b>Problem 3: `backlog_peak` is not the same quantity in the two firmwares</b></summary>
+
+The table asks for `backlog_peak` under `calib` in both S3 columns, which invites
+reading them as one series. They are not. In the superloop it is a free-running
+counter of ticks that piled up, and week 2 measured 416 of them. In the thread
+build it is `k_msgq_num_used_get()` on a queue declared 8 deep, posted to with
+`K_NO_WAIT`, so it cannot exceed 8 and anything beyond that is a **dropped**
+release, not a late one.
+
+Two consequences we have to respect when the numbers come in: column 3
+saturating at 8 is not an improvement over 416 by a factor of 52, and
+`lat_peak_us` is the only unbounded lateness figure in that column. The queue
+depth is also a design parameter we chose by pasting the guide's code, so it
+belongs in an ADR if the drop ever happens.
+
+</details>
+
+### Result
+
+| | |
+|---|---|
+| Task A overlay written and building | Done, 86 lines, **0 lines of C** |
+| Overlay verified present in the devicetree | Done (`port-diffstat.txt`) |
+| HMI path (`display.conf`) builds on the S3 | Done, with the i2c0 pinctrl fix |
+| Task C thread implemented and building clean | Done, as a reverted patch |
+| Boots without faulting | Done, on `native_sim` |
+| RET §3 week-3 section | Written, S3 cells left as `____` |
+| Measurement protocol and wiring | Written, `evidencia/lab03/README.md` |
+
+The claim the session exists to support already holds on the evidence we have:
+moving silicon cost one 86-line hardware description and no source change.
+
+The one quantity that can be measured without the board is what the thread costs
+in memory. Same overlay, same tree, only the patch differs
+(`evidencia/lab03/footprint.txt`):
+
+| Region | superloop | + sampling thread | delta |
+|---|---|---|---|
+| FLASH | 135 524 B | 135 604 B | +80 B |
+| `iram0_0_seg` | 38 020 B | 38 720 B | +700 B |
+| `dram0_0_seg` | 36 104 B | 38 520 B | **+2416 B** |
+
+The 2416 B of RAM is the price of the first thread: 1536 B of stack, 32 B for the
+8-deep queue of release timestamps, and the remainder in the `k_thread` control
+block, the three atomics and alignment. Worth carrying into module 3, where the
+argument for threads has to be paid for in something.
+
+### Open items
+
+- **Everything that needs the board**: columns 2 and 3 of the table, the L476 vs
+  S3 reading, and `C_i` re-measured on the S3 for RET §1. The ESP32-S3-DevKitC
+  has not been bought yet and week 3 is the session that needs it.
+- The jumper for self-stimulus moves to **GPIO21 to GPIO16** on this board. Same
+  caveat as week 2: phase-locked to the loop, so it measures the deterministic
+  case.
+- Confirm the HMI really talks on GPIO8/GPIO9 with the analyzer, since that fix
+  is reasoned from the board files and not yet observed.
+- Still pending from entry 02: add David and Ismael as collaborators here.

@@ -1,0 +1,86 @@
+/*
+ * ESP32-S3-DevKitC-1 pin map. Only hardware description changes; the C does not.
+ *
+ * The six instrumentation pins are GPIO4-GPIO7 plus GPIO15 and GPIO17, which sit
+ * on the same side of the devkit, so the analyzer ribbon clips on in one go.
+ * Everything else stays clear of the strapping pins (0/3/45/46), the USB-JTAG
+ * pair (19/20), the console UART (43/44) and the octal PSRAM/flash lines
+ * (26-37, which on the N8R8 modules are not routed to the headers).
+ *
+ * No plain LED on this devkit: its only on-board LED is an addressable WS2812
+ * on GPIO48, useless for a 50 Hz software PWM. The valve is therefore an
+ * external LED on GPIO21, declared here as valve_out and aliased to led0.
+ *
+ * Pressure comes from the synthetic plant until the pot is wired: build with
+ * -DEXTRA_DTC_OVERLAY_FILE=pot_esp32.overlay to read it from ADC1 instead.
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
+#include <zephyr/dt-bindings/pinctrl/esp32s3-pinctrl.h>
+
+/ {
+	aliases {
+		led0 = &valve_out;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		valve_out: valve_out { gpios = <&gpio0 21 GPIO_ACTIVE_HIGH>; };
+	};
+
+	instr {
+		compatible = "gpio-leds";
+		instr_samp: instr_samp { gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>; };
+		instr_ctrl: instr_ctrl { gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>; };
+		instr_cons: instr_cons { gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>; };
+		instr_tele: instr_tele { gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>; };
+		instr_flow: instr_flow { gpios = <&gpio0 15 GPIO_ACTIVE_HIGH>; };
+		instr_disp: instr_disp { gpios = <&gpio0 17 GPIO_ACTIVE_HIGH>; };
+	};
+
+	keys {
+		compatible = "gpio-keys";
+		flow_pulse: flow_pulse {
+			gpios = <&gpio0 16 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+		};
+	};
+};
+
+/* The board's own i2c0_default sits on SDA GPIO1 / SCL GPIO2, and GPIO2 is the
+ * ADC1 channel the pot fragment claims for pressure. Move the bus to the
+ * GPIO8/GPIO9 pair the firmware README documents so both can coexist. */
+&pinctrl {
+	i2c0_hmi: i2c0_hmi {
+		group1 {
+			pinmux = <I2C0_SDA_GPIO8>,
+				 <I2C0_SCL_GPIO9>;
+			bias-pull-up;
+			drive-open-drain;
+			output-high;
+		};
+	};
+};
+
+/* Optional SSD1306 HMI (build with -DEXTRA_CONF_FILE=display.conf).
+ * Unlike the C6 board, the S3 board leaves i2c0 off: enable it here. */
+&i2c0 {
+	status = "okay";
+	pinctrl-0 = <&i2c0_hmi>;
+	pinctrl-names = "default";
+	clock-frequency = <I2C_BITRATE_FAST>;
+
+	ssd1306: ssd1306@3c {
+		compatible = "solomon,ssd1306";
+		reg = <0x3c>;
+		width = <128>;
+		height = <64>;
+		segment-offset = <0>;
+		page-offset = <0>;
+		display-offset = <0>;
+		multiplex-ratio = <63>;
+		prechargep = <0x22>;
+		segment-remap;
+		com-invdir;
+	};
+};

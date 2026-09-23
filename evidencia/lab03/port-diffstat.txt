@@ -1,0 +1,33 @@
+Port cost, week 3 Task A (esp32s3_devkitc/esp32s3/procpu)
+generated: 2026-09-23T23:28:55Z
+
+$ git add -N firmware/superloop/boards/esp32s3_devkitc_esp32s3_procpu.overlay
+$ git diff --cached --stat
+ .../boards/esp32s3_devkitc_esp32s3_procpu.overlay  | 86 ++++++++++++++++++++++
+ 1 file changed, 86 insertions(+)
+
+C files touched by the port: 0
+  $ git diff --stat -- 'firmware/superloop/src/*.c'   (against the week-2 tree)
+  (no output: src/main.c is byte-identical to the week-2 build that ran on the L476)
+
+Build verification (no board attached yet):
+  west build -p -b esp32s3_devkitc/esp32s3/procpu firmware/superloop                      -> OK
+  west build -p -b esp32s3_devkitc/esp32s3/procpu firmware/superloop -- -DEXTRA_CONF_FILE=display.conf -> OK
+
+Devicetree check on build/zephyr/zephyr.dts (the overlay is picked up, not ignored):
+  		valve_out: valve_out {
+  			gpios = < &gpio0 0x15 0x0 >;
+  		instr_samp: instr_samp {
+  			gpios = < &gpio0 0x4 0x0 >;
+  		instr_ctrl: instr_ctrl {
+  			gpios = < &gpio0 0x5 0x0 >;
+  		instr_cons: instr_cons {
+  			gpios = < &gpio0 0x6 0x0 >;
+  		instr_tele: instr_tele {
+  			gpios = < &gpio0 0x7 0x0 >;
+  		instr_flow: instr_flow {
+  			gpios = < &gpio0 0xf 0x0 >;
+  		instr_disp: instr_disp {
+  			gpios = < &gpio0 0x11 0x0 >;
+  		flow_pulse: flow_pulse {
+  			gpios = < &gpio0 0x10 0x20 >;
