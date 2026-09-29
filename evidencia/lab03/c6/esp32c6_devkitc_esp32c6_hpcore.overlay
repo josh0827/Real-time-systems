@@ -1,0 +1,37 @@
+/*
+ * ESP32-C6-DevKitC-1 pin map for the week-3 superloop.
+ *
+ * GPIO8 is reserved for the board's addressable WS2812. The valve therefore
+ * uses an external LED on GPIO2, matching the verified lab01 bring-up.
+ * Instrumentation stays on ordinary GPIOs and the flow input is GPIO11.
+ */
+
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	aliases {
+		led0 = &valve_out;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		valve_out: valve_out { gpios = <&gpio0 2 GPIO_ACTIVE_HIGH>; };
+	};
+
+	instr {
+		compatible = "gpio-leds";
+		instr_samp: instr_samp { gpios = <&gpio0 3 GPIO_ACTIVE_HIGH>; };
+		instr_ctrl: instr_ctrl { gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>; };
+		instr_cons: instr_cons { gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>; };
+		instr_tele: instr_tele { gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>; };
+		instr_flow: instr_flow { gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>; };
+		instr_disp: instr_disp { gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>; };
+	};
+
+	keys {
+		compatible = "gpio-keys";
+		flow_pulse: flow_pulse {
+			gpios = <&gpio0 11 (GPIO_ACTIVE_HIGH | GPIO_PULL_DOWN)>;
+		};
+	};
+};

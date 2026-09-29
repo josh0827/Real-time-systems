@@ -1,0 +1,11 @@
+Memory footprint, week 3, esp32c6_devkitc/esp32c6/hpcore
+
+No C6 build has been measured yet. Fill these values from the linker output
+using the same source tree and overlay for both builds.
+
+                  superloop      + sampling thread        delta
+  FLASH           ____ B          ____ B                  ____ B
+  RAM             ____ B          ____ B                  ____ B
+
+The S3 values in ../s3/footprint.txt must not be reused: the C6 uses a different
+architecture, SDK target and linker memory layout.

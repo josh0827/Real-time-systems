@@ -1,0 +1,14 @@
+Port cost, week 3 Task A (esp32c6_devkitc/esp32c6/hpcore)
+
+This is the C6 adaptation of the S3 port. No C source changes are required for
+Task A; the board target and devicetree overlay are the platform-specific parts.
+
+Build command:
+  west build -p -b esp32c6_devkitc/esp32c6/hpcore firmware/superloop
+
+Expected verification after the C6 build:
+  grep -A1 'instr_samp:\|valve_out:\|flow_pulse:' build/zephyr/zephyr.dts
+
+The resulting devicetree must resolve all eight application nodes to &gpio0 at
+GPIO2, GPIO3-7, GPIO10 and GPIO11. No C6 hardware build was available when
+this evidence was prepared, so build status and linker deltas remain pending.

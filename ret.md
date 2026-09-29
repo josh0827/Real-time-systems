@@ -1,7 +1,8 @@
 # RET — Timing Evidence Report
 
 **Team:** Joshua · David Henao Rojas · Ismael Cortés Ramírez
-**Boards:** NUCLEO-L476RG (weeks 1–2) · ESP32-S3-DevKitC (from week 3)
+**Boards:** NUCLEO-L476RG (weeks 1–2) · ESP32-C6-DevKitC (from week 3)
+**Optional comparison:** ESP32-S3-DevKitC
 **Living** document: updated every week; handed in at the workshop (week 8) and
 at the close (week 16).
 House rule: *"show me the trace"* — every timing claim cites a measurement.
@@ -440,8 +441,33 @@ control periods past their deadline, because the deadline miss is decided by
 Utilisation is the wrong instrument for this failure, which is precisely why
 module 3 replaces it with response-time analysis.
 
-### Week 3 — S3 baseline and silicon comparison
-…
+### Week 3 — C6 baseline and the first thread
+
+The week-3 hardware target is the **ESP32-C6-DevKitC** with Zephyr target
+`esp32c6_devkitc/esp32c6/hpcore`. The S3 port remains in
+`evidencia/lab03/s3/` as an optional silicon comparison; it is not required to
+complete the lab after the hardware requirement changed.
+
+The C6 port is described by the overlay in
+`evidencia/lab03/c6/esp32c6_devkitc_esp32c6_hpcore.overlay`. It keeps the
+week-2 C source unchanged for the superloop build and maps the instrumentation
+to GPIO3-7 and GPIO10, the flow input to GPIO11, and the external valve LED to
+GPIO2. GPIO8 is left unused because it drives the board's addressable WS2812.
+
+| Measurement | L476RG (week 2) | C6 superloop | C6 + sampling thread |
+|---|---:|---:|---:|
+| Maximum sampling jitter, >= 30 s | measured | ____ us | ____ us |
+| Maximum sampling jitter with `calib` | measured | ____ us | ____ us |
+| `backlog_peak` with `calib` | measured | ____ ticks | ____ ticks |
+| `lat_peak_us` | — | — | ____ us |
+| Maximum control period with `calib` | — | ____ ms | ____ ms |
+
+The C6 superloop is expected to show the same architectural failure as the
+week-2 superloop: `calib` blocks sampling and control while `main` is busy. In
+the threaded build, sampling should continue because the priority-2 thread
+preempts the priority-10 main thread; control can still be delayed because it
+remains in the superloop. Every blank in this table must come from a C6 VCD or
+console capture, never from the S3 or L476 values.
 
 ## 4. Schedulability analysis
 
