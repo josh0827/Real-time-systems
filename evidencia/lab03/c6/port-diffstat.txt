@@ -1,14 +1,22 @@
-Port cost, week 3 Task A (esp32c6_devkitc/esp32c6/hpcore)
+Port cost, week 3 Task A (ESP32-C6-DevKitC, Zephyr
+`esp32c6_devkitc/esp32c6/hpcore`)
 
-This is the C6 adaptation of the S3 port. No C source changes are required for
-Task A; the board target and devicetree overlay are the platform-specific parts.
+Compared with the course repository's original C6 overlay:
 
-Build command:
-  west build -p -b esp32c6_devkitc/esp32c6/hpcore firmware/superloop
+  firmware/superloop/boards/esp32c6_devkitc_hpcore.overlay | 47 ++++++----------------
+  1 file changed, 12 insertions(+), 35 deletions(-)
 
-Expected verification after the C6 build:
-  grep -A1 'instr_samp:\|valve_out:\|flow_pulse:' build/zephyr/zephyr.dts
+The six instrumentation signals use GPIO3-7 and GPIO10, flow input uses GPIO11,
+and the external valve LED uses GPIO2. C source is not part of the Task A port;
+the separate week-2 patch completes Tasks 1-3 in `main.c`.
 
-The resulting devicetree must resolve all eight application nodes to &gpio0 at
-GPIO2, GPIO3-7, GPIO10 and GPIO11. No C6 hardware build was available when
-this evidence was prepared, so build status and linker deltas remain pending.
+Build and flash verification, 2026-09-29:
+
+  west build -p -b esp32c6_devkitc/esp32c6/hpcore \
+    --build-dir build-lab03-c6-superloop firmware/superloop -> OK
+  west flash --build-dir build-lab03-c6-superloop -> OK, hash verified
+
+Generated `zephyr.dts` resolves all eight application nodes to `&gpio0` at the
+GPIOs listed above. Linker footprint: FLASH 133,556 B; RAM 51,088 B. The flash
+runner reported that the image declares 8 MB while the attached chip reports
+4 MB; flashing completed successfully. Timing evidence is still pending.

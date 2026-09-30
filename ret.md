@@ -454,9 +454,25 @@ week-2 C source unchanged for the superloop build and maps the instrumentation
 to GPIO3-7 and GPIO10, the flow input to GPIO11, and the external valve LED to
 GPIO2. GPIO8 is left unused because it drives the board's addressable WS2812.
 
+The C6 superloop was built and flashed on 2026-09-29, and the generated
+devicetree was checked against this pin map. The sampling-thread variant also
+compiled and its baseline was captured at 4 MHz for 50 s. Linker footprints
+were 133,556 B FLASH / 51,088 B RAM for the superloop and 133,636 B FLASH /
+53,696 B RAM for the thread build. The first serial `status` smoke test
+reported `backlog_peak=4`; this is not a 50-second timing measurement. A valid
+C6 superloop baseline VCD has now been captured at 4 MHz for 50 s:
+`evidencia/lab03/c6/superloop-baseline-50s-4MHz.vcd`. It measures D0 at
+999.859 Hz, D1 at 99.986 Hz, and D3 at 1.000 Hz over 50 telemetry events. The
+sampling-thread baseline VCD,
+`evidencia/lab03/c6/thread-baseline-50s-4MHz.vcd`, shows the same baseline
+frequencies with D6 flat. The remaining C6 timing cells stay blank until their
+matching VCD captures and console transcripts are collected. The flash runner
+reported an 8 MB image setting on a device detected as 4 MB; the superloop image
+flashed and passed hash verification.
+
 | Measurement | L476RG (week 2) | C6 superloop | C6 + sampling thread |
 |---|---:|---:|---:|
-| Maximum sampling jitter, >= 30 s | measured | ____ us | ____ us |
+| Maximum sampling jitter, >= 30 s | measured | **221.00 us** | **221.00 us** |
 | Maximum sampling jitter with `calib` | measured | ____ us | ____ us |
 | `backlog_peak` with `calib` | measured | ____ ticks | ____ ticks |
 | `lat_peak_us` | — | — | ____ us |

@@ -13,7 +13,7 @@ diff -ruN pa/firmware/superloop/prj.conf pb/firmware/superloop/prj.conf
 diff -ruN pa/firmware/superloop/src/main.c pb/firmware/superloop/src/main.c
 --- a/firmware/superloop/src/main.c	2026-09-23 18:27:42.166347098 -0500
 +++ b/firmware/superloop/src/main.c	2026-09-23 18:27:42.171629021 -0500
-@@ -80,14 +80,21 @@
+@@ -80,14 +80,24 @@
  
  /* ---- ISR side ------------------------------------------------------------- */
  
@@ -26,6 +26,7 @@ diff -ruN pa/firmware/superloop/src/main.c pb/firmware/superloop/src/main.c
 +K_MSGQ_DEFINE(tick_q, sizeof(uint32_t), 8, 4);
  static atomic_t backlog_peak; /* worst backlog seen — `status` reports it */
 +static atomic_t lat_peak_us;  /* worst release -> thread start */
++static atomic_t ticks_dropped; /* releases rejected by the full queue */
 +static atomic_t control_pending;
  
  static void tick_isr(struct k_timer *t)
@@ -33,27 +34,29 @@ diff -ruN pa/firmware/superloop/src/main.c pb/firmware/superloop/src/main.c
 -	atomic_val_t backlog = atomic_inc(&ticks_pending) + 1;
 +	uint32_t released = k_cycle_get_32();
 +
-+	k_msgq_put(&tick_q, &released, K_NO_WAIT);
++	if (k_msgq_put(&tick_q, &released, K_NO_WAIT) != 0) {
++		atomic_inc(&ticks_dropped);
++	}
 +
 +	atomic_val_t backlog = k_msgq_num_used_get(&tick_q);
  
  	if (backlog > atomic_get(&backlog_peak)) {
  		atomic_set(&backlog_peak, backlog);
-@@ -413,10 +420,11 @@
+@@ -413,10 +423,11 @@
  		printk("commands: help status joy set <mv> clear calib\n");
  	} else if (strcmp(line, "status") == 0) {
  		printk("p=%d mV sp=%d mV duty=%d%% flow_x100=%d estop=%d "
 -		       "batches=%u backlog_peak=%ld\n",
-+		       "batches=%u backlog_peak=%ld lat_peak_us=%ld\n",
++		       "batches=%u backlog_peak=%ld lat_peak_us=%ld ticks_dropped=%ld\n",
  		       pressure_mv, setpoint_mv, duty_pct,
  		       (int)(flow_lpm * 100.0f), (int)estop, flow_batches,
 -		       (long)atomic_get(&backlog_peak));
 +		       (long)atomic_get(&backlog_peak),
-+		       (long)atomic_get(&lat_peak_us));
++		       (long)atomic_get(&lat_peak_us), (long)atomic_get(&ticks_dropped));
  	} else if (strcmp(line, "joy") == 0) {
  		printk("joystick raw: %d mV\n", joystick_mv);
  	} else if (strncmp(line, "set ", 4) == 0) {
-@@ -456,6 +464,38 @@
+@@ -456,6 +467,41 @@
  #endif
  }
  
@@ -92,7 +95,7 @@ diff -ruN pa/firmware/superloop/src/main.c pb/firmware/superloop/src/main.c
  /* ---- Bring-up + the loop -------------------------------------------------- */
  
  static void init_hw(void)
-@@ -486,26 +526,20 @@
+@@ -486,26 +529,20 @@
  int main(void)
  {
  	init_hw();
