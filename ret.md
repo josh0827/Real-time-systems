@@ -1,7 +1,8 @@
 # RET — Timing Evidence Report
 
 **Team:** Joshua · David Henao Rojas · Ismael Cortés Ramírez
-**Boards:** NUCLEO-L476RG (weeks 1–2) · ESP32-S3-DevKitC (from week 3)
+**Boards:** NUCLEO-L476RG (weeks 1–2) · ESP32-C6-DevKitC (from week 3)
+**Optional comparison:** ESP32-S3-DevKitC
 **Living** document: updated every week; handed in at the workshop (week 8) and
 at the close (week 16).
 House rule: *"show me the trace"* — every timing claim cites a measurement.
@@ -440,8 +441,49 @@ control periods past their deadline, because the deadline miss is decided by
 Utilisation is the wrong instrument for this failure, which is precisely why
 module 3 replaces it with response-time analysis.
 
-### Week 3 — S3 baseline and silicon comparison
-…
+### Week 3 — C6 baseline and the first thread
+
+The week-3 hardware target is the **ESP32-C6-DevKitC** with Zephyr target
+`esp32c6_devkitc/esp32c6/hpcore`. The S3 port remains in
+`evidencia/lab03/s3/` as an optional silicon comparison; it is not required to
+complete the lab after the hardware requirement changed.
+
+The C6 port is described by the overlay in
+`evidencia/lab03/c6/esp32c6_devkitc_esp32c6_hpcore.overlay`. It keeps the
+week-2 C source unchanged for the superloop build and maps the instrumentation
+to GPIO3-7 and GPIO10, the flow input to GPIO11, and the external valve LED to
+GPIO2. GPIO8 is left unused because it drives the board's addressable WS2812.
+
+The C6 superloop was built and flashed on 2026-09-29, and the generated
+devicetree was checked against this pin map. The sampling-thread variant also
+compiled and its baseline was captured at 4 MHz for 50 s. Linker footprints
+were 133,556 B FLASH / 51,088 B RAM for the superloop and 133,636 B FLASH /
+53,696 B RAM for the thread build. The first serial `status` smoke test
+reported `backlog_peak=4`; this is not a 50-second timing measurement. A valid
+C6 superloop baseline VCD has now been captured at 4 MHz for 50 s:
+`evidencia/lab03/c6/superloop-baseline-50s-4MHz.vcd`. It measures D0 at
+999.859 Hz, D1 at 99.986 Hz, and D3 at 1.000 Hz over 50 telemetry events. The
+sampling-thread baseline VCD,
+`evidencia/lab03/c6/thread-baseline-50s-4MHz.vcd`, shows the same baseline
+frequencies with D6 flat. The remaining C6 timing cells stay blank until their
+matching VCD captures and console transcripts are collected. The flash runner
+reported an 8 MB image setting on a device detected as 4 MB; the superloop image
+flashed and passed hash verification.
+
+| Measurement | L476RG (week 2) | C6 superloop | C6 + sampling thread |
+|---|---:|---:|---:|
+| Maximum sampling jitter, >= 30 s | measured | **221.00 us** | **221.00 us** |
+| Maximum sampling jitter with `calib` | measured | ____ us | ____ us |
+| `backlog_peak` with `calib` | measured | ____ ticks | ____ ticks |
+| `lat_peak_us` | — | — | ____ us |
+| Maximum control period with `calib` | — | ____ ms | ____ ms |
+
+The C6 superloop is expected to show the same architectural failure as the
+week-2 superloop: `calib` blocks sampling and control while `main` is busy. In
+the threaded build, sampling should continue because the priority-2 thread
+preempts the priority-10 main thread; control can still be delayed because it
+remains in the superloop. Every blank in this table must come from a C6 VCD or
+console capture, never from the S3 or L476 values.
 
 ## 4. Schedulability analysis
 

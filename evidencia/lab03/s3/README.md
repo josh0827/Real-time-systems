@@ -1,7 +1,10 @@
 # Week 3 evidence — the S3 port and the first thread
 
+This folder contains the optional ESP32-S3 variant. The primary week-3 target,
+after the hardware requirement changed, is the ESP32-C6 in `../c6/`.
+
 Status: **Task A done and build-verified. Tasks B and C are written and compiling,
-but not yet measured: the ESP32-S3-DevKitC has not arrived.** Nothing in this
+but not yet measured.** Nothing in this
 folder is a number taken from a board, and `ret.md` §3 keeps `____` in every S3
 cell until it is.
 
@@ -100,8 +103,8 @@ pins, so they work here as long as the ribbon keeps the order in the table above
    file stays under 2 MB at full resolution.
 5. Reduce with the week-2 scripts:
    ```bash
-   python ../lab02/vcd_stats.py  baseline-50s-4MHz.vcd   > baseline-stats.txt
-   python ../lab02/vcd_calib.py  calib-flow-50s-4MHz.vcd > calib-flow-stats.txt
+   python ../../lab02/vcd_stats.py  baseline-50s-4MHz.vcd   > baseline-stats.txt
+   python ../../lab02/vcd_calib.py  calib-flow-50s-4MHz.vcd > calib-flow-stats.txt
    ```
 
 The one wiring difference from week 2: the self-stimulus jumper runs from

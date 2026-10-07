@@ -1,0 +1,21 @@
+Memory footprint, week 3, `esp32c6_devkitc/esp32c6/hpcore`
+
+Linker output from both C6 builds, 2026-09-29. The thread build compiled but
+has not been flashed or measured on hardware.
+
+                  superloop      + sampling thread        delta
+  FLASH           133,556 B       133,636 B                +80 B
+  RAM              51,088 B        53,696 B              +2,608 B
+
+Superloop linker regions: FLASH 8,388,352 B; RAM 509,456 B. The linker reports
+1.59% FLASH and 10.03% RAM used for the superloop build. The thread build uses
+1.59% FLASH and 10.54% RAM. Both builds use the same source tree, board target
+and overlay.
+
+The flash runner detected a 4 MB physical chip while the generated image
+declared 8 MB. The current application image flashed and passed hash
+verification, but this size discrepancy should be resolved before relying on
+the full partition map.
+
+Do not reuse the S3 values in `../s3/footprint.txt`; the C6 has a different
+architecture, SDK target and linker memory layout.

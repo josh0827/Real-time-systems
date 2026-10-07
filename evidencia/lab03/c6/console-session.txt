@@ -1,0 +1,9 @@
+C6 superloop serial smoke test
+Date: 2026-09-29
+Connection: CH343 attached to WSL, /dev/ttyACM0, 115200 8N1
+Purpose: Verify boot and console before timing captures. This is not a timed measurement.
+
+> status
+p=1497 mV sp=1500 mV duty=47% flow_x100=0 estop=0 batches=0 backlog_peak=4
+
+The 50-second baseline and calib transcripts are still pending.
