@@ -56,14 +56,23 @@ print("   min %8.2f  mean %8.2f  max %8.2f us   jitter %.2f us"
       % (us(min(normal)), us(st.mean(normal)), us(max(normal)), us(max(normal) - min(normal))))
 print("   max deviation from 1000 us   : %.2f us" % us(max(abs(p - 1e6) for p in normal)))
 print()
-print("REGIME 2 - blocked by telemetry : %5d  (one every %.2f s)" % (len(blocked), dur_s / len(blocked)))
-print("   min %8.2f  mean %8.2f  max %8.2f us"
-      % (us(min(blocked)), us(st.mean(blocked)), us(max(blocked))))
+# Regimes 2 and 3 only exist when something blocks the loop for more than half
+# a period (the L476's one-byte USART). On a chip with a TX FIFO, or with a
+# sampling thread, both can be empty, and that absence is itself the result.
+if blocked:
+    print("REGIME 2 - blocked by telemetry : %5d  (one every %.2f s)" % (len(blocked), dur_s / len(blocked)))
+    print("   min %8.2f  mean %8.2f  max %8.2f us"
+          % (us(min(blocked)), us(st.mean(blocked)), us(max(blocked))))
+else:
+    print("REGIME 2 - blocked by telemetry :     0  (no period above %.0f us)" % us(BLOCKED))
 print()
-print("REGIME 3 - catch-up (backlog drain): %3d  (%.1f per blocked event)"
-      % (len(catch), len(catch) / len(blocked)))
-print("   min %8.2f  mean %8.2f  max %8.2f us"
-      % (us(min(catch)), us(st.mean(catch)), us(max(catch))))
+if catch:
+    print("REGIME 3 - catch-up (backlog drain): %3d  (%.1f per blocked event)"
+          % (len(catch), len(catch) / max(len(blocked), 1)))
+    print("   min %8.2f  mean %8.2f  max %8.2f us"
+          % (us(min(catch)), us(st.mean(catch)), us(max(catch))))
+else:
+    print("REGIME 3 - catch-up (backlog drain):   0  (no period below %.0f us)" % us(CATCHUP))
 print()
 print("ROW 1  mean sampling period over the whole capture : %.2f us" % us(st.mean(per)))
 print("ROW 2  sampling jitter, max - min over %.0f s      : %.2f us" % (dur_s, us(max(per) - min(per))))

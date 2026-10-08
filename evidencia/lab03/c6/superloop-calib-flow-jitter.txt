@@ -1,0 +1,35 @@
+========================================================================
+Sampling trace, D0 = instr_samp, 49.999 s, 49992 periods
+========================================================================
+
+REGIME 1 - normal passes        : 49586  (99.19 %)
+   min   891.75  mean  1000.14  max  1113.00 us   jitter 221.25 us
+   max deviation from 1000 us   : 113.00 us
+
+REGIME 2 - blocked by telemetry :     1  (one every 50.00 s)
+   min 403258.00  mean 403258.00  max 403258.00 us
+
+REGIME 3 - catch-up (backlog drain): 405  (405.0 per blocked event)
+   min     5.75  mean     6.91  max   264.00 us
+
+ROW 1  mean sampling period over the whole capture : 1000.14 us
+ROW 2  sampling jitter, max - min over 50 s      : 403252.25 us
+       worst single deviation from the 1000 us grid: 402258.00 us
+
+========================================================================
+CONTROL LOOP, D1 = instr_ctrl  (REQ-CTRL-01: period 10 ms, deadline = T)
+========================================================================
+  periods: 4998   min 59.25  mean 10001.41  max 411260.25 us
+  periods longer than the 10 ms deadline: 2479  (49.60 %)
+  worst overrun: 401260.25 us over deadline (4013 % of the period)
+
+========================================================================
+CPU UTILISATION with measured C_i
+========================================================================
+  sampling   C_i =      2.70 us   T =       1.0 ms   U =  0.270 %
+  control    C_i =      0.85 us   T =      10.0 ms   U =  0.008 %
+  telemetry  C_i =    108.08 us   T =    1000.0 ms   U =  0.011 %
+  TOTAL                                                U =  0.290 %
+
+  The CPU is idle 99.71 % of the time and the hard deadlines are still
+  missed. The problem is not load, it is the architecture.

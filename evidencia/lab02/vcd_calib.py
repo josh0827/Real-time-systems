@@ -4,6 +4,9 @@ import sys
 import statistics as st
 
 PATH = sys.argv[1]
+# Worst baseline sampling period to compare against, in us. Defaults to the
+# L476 superloop (week 2, row 2); pass the matching baseline for other builds.
+BASE_US = float(sys.argv[2]) if len(sys.argv) > 2 else 6765.25
 sym2name, edges, ts_ns = {}, {}, None
 
 with io.open(PATH, encoding="utf-8", errors="replace") as fh:
@@ -98,8 +101,8 @@ print("  worst sampling period in the capture: %.2f ms  at t = %.3f s"
       % (ms(worst), samp[wi] / 1e9))
 print("  ticks it spans: %d" % round(worst / 1e6))
 print()
-print("  row 2 baseline (no calib) was 6.77 ms; this is %.1fx worse."
-      % (worst / 6765250.0))
+print("  baseline worst period (no calib) was %.2f ms; this is %.1fx that."
+      % (BASE_US / 1000.0, worst / (BASE_US * 1000.0)))
 
 big = sorted(per, reverse=True)[:6]
 print("  six longest periods (ms): " + ", ".join("%.2f" % ms(p) for p in big))

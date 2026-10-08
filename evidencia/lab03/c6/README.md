@@ -6,6 +6,22 @@ The C6 was already used for the week-1 bring-up, so this version uses the verifi
 
 ## Status
 
+**Update 2026-10-07: complete.** The missing captures were taken in the week-4
+session (plan in `../../lab04/README.md`), each with a console log that starts
+with the firmware's boot banner:
+
+| Capture | Banner | Jumper | Console log | Reductions |
+|---|---|---|---|---|
+| `superloop-calib-flow-50s-4MHz.vcd` | `superloop build` | on | `console-superloop-calib.txt` | `superloop-calib-flow-stats.txt`, `-jitter.txt` |
+| `thread-baseline-v2-50s-4MHz.vcd` | `sampling-thread build` | off | `console-thread.txt` | `thread-baseline-v2-stats.txt` |
+| `thread-calib-flow-50s-4MHz.vcd` | `sampling-thread build` | on | `console-thread-calib.txt` | `thread-calib-flow-stats.txt`, `-jitter.txt` |
+
+`thread-baseline-v2` replaces `thread-baseline-50s-4MHz.vcd`, which matches the
+superloop to the quarter microsecond and was taken with the superloop still on
+the board (the re-capture gives 3.75 µs of jitter against 221.00 µs; see
+`ret.md` §3 week 3). Figures: `fig-superloop-calib.svg`, `fig-thread-calib.svg`.
+The text below is the 2026-09-29 status, kept as written.
+
 The C6 superloop was built and flashed on 2026-09-29. The generated devicetree
 was checked against the physical pin map below. The Task C patch applies to the
 week-2 firmware and reports queue occupancy (`backlog_peak`), release-to-thread

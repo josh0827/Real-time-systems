@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 484" width="1120" font-family="ui-monospace,Menlo,Consolas,monospace">
+<rect width="1120" height="484" fill="#fbfaf8"/>
+<text x="170" y="32" font-size="17" font-weight="700" fill="#1a1a1a">Kernel: instr_samp falls, one context switch, instr_ctrl rises</text>
+<text x="170" y="54" font-size="12.5" fill="#555">ESP32-C6 kernel build · rendered from kernel-calib-flow-50s-4MHz.vcd · window 40 us from t = 20.011296 s</text>
+<line x1="170" y1="88" x2="1090" y2="88" stroke="#bbb"/>
+<line x1="170.0" y1="83" x2="170.0" y2="88" stroke="#bbb"/>
+<text x="170.0" y="77" font-size="11" fill="#666" text-anchor="middle">+0.0 us</text>
+<line x1="285.0" y1="83" x2="285.0" y2="88" stroke="#bbb"/>
+<text x="285.0" y="77" font-size="11" fill="#666" text-anchor="middle">+5.0 us</text>
+<line x1="400.0" y1="83" x2="400.0" y2="88" stroke="#bbb"/>
+<text x="400.0" y="77" font-size="11" fill="#666" text-anchor="middle">+10.0 us</text>
+<line x1="515.0" y1="83" x2="515.0" y2="88" stroke="#bbb"/>
+<text x="515.0" y="77" font-size="11" fill="#666" text-anchor="middle">+15.0 us</text>
+<line x1="630.0" y1="83" x2="630.0" y2="88" stroke="#bbb"/>
+<text x="630.0" y="77" font-size="11" fill="#666" text-anchor="middle">+20.0 us</text>
+<line x1="745.0" y1="83" x2="745.0" y2="88" stroke="#bbb"/>
+<text x="745.0" y="77" font-size="11" fill="#666" text-anchor="middle">+25.0 us</text>
+<line x1="860.0" y1="83" x2="860.0" y2="88" stroke="#bbb"/>
+<text x="860.0" y="77" font-size="11" fill="#666" text-anchor="middle">+30.0 us</text>
+<line x1="975.0" y1="83" x2="975.0" y2="88" stroke="#bbb"/>
+<text x="975.0" y="77" font-size="11" fill="#666" text-anchor="middle">+35.0 us</text>
+<line x1="1090.0" y1="83" x2="1090.0" y2="88" stroke="#bbb"/>
+<text x="1090.0" y="77" font-size="11" fill="#666" text-anchor="middle">+40.0 us</text>
+<rect x="532.2" y="94" width="327.8" height="322" fill="#d92b2b" opacity="0.07"/>
+<line x1="532.2" y1="94" x2="532.2" y2="412" stroke="#d92b2b" stroke-width="1.4" stroke-dasharray="4 3"/>
+<line x1="860.0" y1="94" x2="860.0" y2="412" stroke="#d92b2b" stroke-width="1.4" stroke-dasharray="4 3"/>
+<line x1="532.2" y1="442.0" x2="860.0" y2="442.0" stroke="#d92b2b" stroke-width="1.4"/>
+<text x="696.1" y="463.0" font-size="14" font-weight="700" fill="#d92b2b" text-anchor="middle">14.25 us from instr_samp falling to instr_ctrl rising</text>
+<text x="12" y="130" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_samp</text>
+<text x="12" y="143" font-size="10.5" fill="#777">D0 · sampling 1 kHz</text>
+<line x1="170" y1="130.0" x2="1090" y2="130.0" stroke="#ddd"/>
+<rect x="371.25" y="110.0" width="161.00" height="20.0" fill="#1f5c8b"/>
+<text x="12" y="176" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_ctrl</text>
+<text x="12" y="189" font-size="10.5" fill="#777">D1 · control 10 ms</text>
+<line x1="170" y1="176.0" x2="1090" y2="176.0" stroke="#ddd"/>
+<rect x="860.00" y="156.0" width="17.25" height="20.0" fill="#2e7d4f"/>
+<text x="12" y="222" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_cons</text>
+<text x="12" y="235" font-size="10.5" fill="#777">D2 · console</text>
+<line x1="170" y1="222.0" x2="1090" y2="222.0" stroke="#ddd"/>
+<text x="178" y="216.0" font-size="11" fill="#aaa">flat</text>
+<text x="12" y="268" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_tele</text>
+<text x="12" y="281" font-size="10.5" fill="#777">D3 · telemetry 1 Hz</text>
+<line x1="170" y1="268.0" x2="1090" y2="268.0" stroke="#ddd"/>
+<text x="178" y="262.0" font-size="11" fill="#aaa">flat</text>
+<text x="12" y="314" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_flow</text>
+<text x="12" y="327" font-size="10.5" fill="#777">D4 · flow batch</text>
+<line x1="170" y1="314.0" x2="1090" y2="314.0" stroke="#ddd"/>
+<text x="178" y="308.0" font-size="11" fill="#aaa">flat</text>
+<text x="12" y="360" font-size="12.5" font-weight="700" fill="#1a1a1a">instr_disp</text>
+<text x="12" y="373" font-size="10.5" fill="#777">D5 · display</text>
+<line x1="170" y1="360.0" x2="1090" y2="360.0" stroke="#ddd"/>
+<text x="178" y="354.0" font-size="11" fill="#aaa">flat</text>
+<text x="12" y="406" font-size="12.5" font-weight="700" fill="#1a1a1a">flow_pulse</text>
+<text x="12" y="419" font-size="10.5" fill="#777">D6 · flow input</text>
+<line x1="170" y1="406.0" x2="1090" y2="406.0" stroke="#ddd"/>
+<rect x="423.00" y="386.0" width="667.00" height="20.0" fill="#a01b3f"/>
+</svg>

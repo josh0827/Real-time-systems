@@ -1,0 +1,21 @@
+thread-baseline-v2-50s-4MHz.vcd
+  releases: 49993   fitted period 1000.141 us
+  lateness vs grid: p50 0.71   p99 2.08   max 2.17 us
+  releases more than 4 us late: 0 (0.0 per second)
+    by release index mod  5: []
+    by release index mod 10: []
+    by release index mod 50: []
+kernel-baseline-50s-4MHz.vcd
+  releases: 49993   fitted period 1000.141 us
+  lateness vs grid: p50 0.25   p99 6.23   max 9.10 us
+  releases more than 4 us late: 506 (10.1 per second)
+    by release index mod  5: [(3, 114), (0, 98), (2, 98), (4, 98), (1, 98)]
+    by release index mod 10: [(3, 114), (5, 98), (7, 98), (9, 98), (1, 98)]
+    by release index mod 50: [(3, 35), (15, 20), (17, 20), (19, 20), (21, 20)]
+kernel-calib-flow-50s-4MHz.vcd
+  releases: 49993   fitted period 1000.141 us
+  lateness vs grid: p50 0.24   p99 3.51   max 6.49 us
+  releases more than 4 us late: 252 (5.0 per second)
+    by release index mod  5: [(2, 58), (0, 49), (4, 49), (1, 48), (3, 48)]
+    by release index mod 10: [(7, 58), (5, 49), (9, 49), (1, 48), (3, 48)]
+    by release index mod 50: [(7, 18), (15, 10), (17, 10), (19, 10), (21, 10)]

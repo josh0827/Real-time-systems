@@ -1,0 +1,34 @@
+==========================================================================
+Capture: 49.999 s   (D0 samp, D1 ctrl, D3 tele, D4 flow-batch, D6 flow-in)
+==========================================================================
+
+ROW 3 - flow pulse ISR -> loop service latency  (REQ-CTRL-05)
+--------------------------------------------------------------------------
+  flow input pulses on D6 : 2501  (50.0 Hz)
+  batch events on D4      : 25  (one per 2.0 s)
+  pulses per batch        : 100.0
+
+  latency, 100th pulse -> instr_flow rising:
+    min     4.00 us   mean     4.24 us   max     4.25 us
+    (the loop visits task_flow_batch once per pass, so this is
+     bounded by one superloop cycle, not by the ISR)
+
+  C_i of task_flow_batch (D4 pulse width):
+    min    77.50 us   mean    77.50 us   max    77.50 us
+
+ROW 5 - sampling jitter with `calib` running  (REQ-CTRL-08)
+--------------------------------------------------------------------------
+  worst sampling period in the capture: 403.26 ms  at t = 26.329 s
+  ticks it spans: 403
+
+  baseline worst period (no calib) was 1.11 ms; this is 362.4x that.
+  six longest periods (ms): 403.26, 1.11, 1.11, 1.11, 1.11, 1.11
+
+  catch-up burst right after it: 405 fast periods, mean 6.91 us, total 2.80 ms
+
+  telemetry pulse width in this capture: mean 108.08 us (n=50)
+
+CONTROL LOOP under the same conditions  (REQ-CTRL-01)
+--------------------------------------------------------------------------
+  min 0.06 ms   mean 10.00 ms   max 411.26 ms
+  periods over the 10 ms deadline: 2479 of 4998

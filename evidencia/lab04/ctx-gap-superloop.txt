@@ -1,0 +1,21 @@
+==========================================================================
+Task C - instr_samp falling (D0) -> instr_ctrl rising (D1), 49.999 s
+==========================================================================
+  control releases matched : 4999 of 4999
+  gap  min    0.25  mean    0.50  p99    0.50  max    0.50 us
+  most frequent values (us): 0.50 x4982, 0.25 x17
+  (4 MHz capture: every value is a multiple of 0.25 us)
+
+Overhead per second at this load (upper bound)
+--------------------------------------------------------------------------
+  sampling   (D0)               999.9 wakeups/s
+  control    (D1)               100.0 wakeups/s
+  telemetry  (D3)                 1.0 wakeups/s
+  flow batch (D4)                 0.0 wakeups/s
+  console    (5 ms sleep)       200.0 wakeups/s
+  display    (50 ms sleep)       20.0 wakeups/s
+  total                        1320.9 wakeups/s  -> x2 = 2642 switches/s
+
+  2642 switches/s x 0.50 us (max gap) = 1321 us/s = 0.13 % of the CPU
+  Upper bound: the gap also holds k_sem_give and k_msgq_get, and the
+  sampling -> control hand-off shares one switch instead of two.

@@ -1,0 +1,28 @@
+Week 4 Task A: functional run on native_sim (native_sim/native/64)
+Date: 2026-10-07. Built with -DCONFIG_THREAD_ANALYZER=n (the analyzer is not available on native_sim).
+native_sim does not model execution time, so lat_peak_us reads 0 here; timing comes only from the board.
+Input sent on stdin: help, status, calib, status, threads.
+
+*** Booting Zephyr OS build v4.4.0-13771-gb9df9f46ae46 ***
+SoilSense Control: kernel build (native_sim)
+type 'help'
+t=1000 p_mv=1173 sp_mv=1500 duty=41 flow_x100=0 estop=0 backlog=0
+t=2000 p_mv=1368 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=0
+help
+commands: help status joy set <mv> clear calib threads
+t=3000 p_mv=1455 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=0
+status
+p=1454 mV sp=1500 mV duty=46% flow_x100=0 estop=0 batches=0 backlog_peak=0 lat_peak_us=0 ticks_dropped=0 ctrl_missed=0
+calib
+calibrating zero-flow offset (1000 rounds)...
+calibration done
+t=4000 p_mv=1496 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=0
+t=5000 p_mv=1496 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=0
+status
+p=1498 mV sp=1500 mV duty=45% flow_x100=0 estop=0 batches=0 backlog_peak=0 lat_peak_us=0 ticks_dropped=0 ctrl_missed=0
+threads
+thread analyzer not built in (CONFIG_THREAD_ANALYZER=n)
+t=6000 p_mv=1498 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=0
+t=7000 p_mv=1495 sp_mv=1500 duty=45 flow_x100=0 estop=0 backlog=0
+
+Stopped at 8.000s

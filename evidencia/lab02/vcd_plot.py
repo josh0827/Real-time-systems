@@ -1,10 +1,12 @@
 """Render a window of a sigrok VCD capture as a standalone SVG waveform figure.
 
-    vcd_plot.py <capture.vcd> <out.svg> [title] [centre_s] [span_s]
+    vcd_plot.py <capture.vcd> <out.svg> [title] [centre_s] [span_s] [board_label]
 
 With no centre, it frames the longest gap in the sampling channel, which is the
 `calib` event. Whatever window is drawn, the longest sampling gap inside it is
-highlighted and measured, so the figure states its own number.
+highlighted and measured (when it is longer than 1.5 periods), so the figure
+states its own number. A window under 1 ms is a zoom on one control release:
+it measures the hand-off from instr_samp falling to instr_ctrl rising instead.
 """
 import io
 import sys
@@ -13,6 +15,7 @@ VCD, OUT = sys.argv[1], sys.argv[2]
 TITLE = sys.argv[3] if len(sys.argv) > 3 else None
 CENTRE = float(sys.argv[4]) if len(sys.argv) > 4 else None
 SPAN = float(sys.argv[5]) if len(sys.argv) > 5 else None
+LABEL = sys.argv[6] if len(sys.argv) > 6 else "NUCLEO-L476RG superloop"
 
 NAMES = [
     ("D0", "instr_samp", "sampling 1 kHz", "#1f5c8b"),
@@ -88,13 +91,23 @@ if CENTRE is None:
 
 T0 = (CENTRE - SPAN / 2) * 1e9
 T1 = (CENTRE + SPAN / 2) * 1e9
-mark, gapspan = longest_gap(T0, T1)
+ZOOM = SPAN < 1e-3
 
-ticks = int(gapspan / 1e6)  # floor: a 6.75 ms gap is 6 whole ticks queued, matching backlog_peak
-if gapspan >= 1e6:
-    gaplabel = "%.2f ms with no sampling at all = %d ticks" % (gapspan / 1e6, ticks)
+if ZOOM:
+    # One control release: last instr_samp fall before the first instr_ctrl rise.
+    ctrl = [a for a, b in pulses("D1") if T0 <= a <= T1]
+    falls = [b for a, b in samp if ctrl and b <= ctrl[0]]
+    mark = (falls[-1], ctrl[0]) if ctrl and falls else None
+    gapspan = (mark[1] - mark[0]) if mark else 0
+    gaplabel = "%.2f us from instr_samp falling to instr_ctrl rising" % (gapspan / 1e3)
 else:
-    gaplabel = "%.2f us" % (gapspan / 1e3)
+    mark, gapspan = longest_gap(T0, T1)
+    if gapspan < 1.5e6:   # a normal 1 ms period is not a gap worth labelling
+        mark = None
+        gaplabel = "no sampling gap above 1.5 ms in this window"
+    else:
+        ticks = int(gapspan / 1e6)  # floor: a 6.75 ms gap is 6 whole ticks queued, matching backlog_peak
+        gaplabel = "%.2f ms with no sampling at all = %d ticks" % (gapspan / 1e6, ticks)
 
 if TITLE is None:
     TITLE = "The blocking command, measured"
@@ -111,9 +124,14 @@ add('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 %d %d" width="%d" '
 add('<rect width="%d" height="%d" fill="#fbfaf8"/>' % (W, H))
 add('<text x="%d" y="32" font-size="17" font-weight="700" fill="#1a1a1a">%s'
     '</text>' % (LEFT, TITLE))
-add('<text x="%d" y="54" font-size="12.5" fill="#555">'
-    'NUCLEO-L476RG superloop · rendered from %s · window %.0f ms at t = %.2f s'
-    '</text>' % (LEFT, VCD.split("/")[-1], SPAN * 1000, CENTRE))
+if ZOOM:
+    add('<text x="%d" y="54" font-size="12.5" fill="#555">'
+        '%s · rendered from %s · window %.0f us from t = %.6f s'
+        '</text>' % (LEFT, LABEL, VCD.split("/")[-1], SPAN * 1e6, T0 / 1e9))
+else:
+    add('<text x="%d" y="54" font-size="12.5" fill="#555">'
+        '%s · rendered from %s · window %.0f ms at t = %.2f s'
+        '</text>' % (LEFT, LABEL, VCD.split("/")[-1], SPAN * 1000, CENTRE))
 
 add('<line x1="%d" y1="%d" x2="%d" y2="%d" stroke="#bbb"/>'
     % (LEFT, TOP - 16, LEFT + PW, TOP - 16))
@@ -122,8 +140,9 @@ for i in range(9):
     px = x(t)
     add('<line x1="%.1f" y1="%d" x2="%.1f" y2="%d" stroke="#bbb"/>'
         % (px, TOP - 21, px, TOP - 16))
+    tick = ("+%.1f us" % ((t - T0) / 1e3)) if ZOOM else ("%.0f ms" % (t / 1e6))
     add('<text x="%.1f" y="%d" font-size="11" fill="#666" text-anchor="middle">'
-        '%.0f ms</text>' % (px, TOP - 27, t / 1e6))
+        '%s</text>' % (px, TOP - 27, tick))
 
 if mark:
     g0, g1 = mark

@@ -45,12 +45,58 @@ is earned.
 
 ## 2. ADRs
 
-### ADR-001 — <title>
-**Context:** … · **Decision:** … · **Justification (with numbers):** … · **Status:** …
+### ADR-001: Node architecture, a preemptive multithreaded kernel
 
-> The superloop-versus-kernel decision belongs to week 4, once the A/B exists.
-> Week 2 gathers the evidence that will justify it, and §3 already contains the
-> numbers that argument will rest on.
+**Status:** accepted (week 4, 2026-10-07), on the A/B measured in §3 week 4
+on the ESP32-C6, same board, pins and protocol for both sides.
+
+**Context.** The superloop fails hard requirements with an idle CPU. On the L476
+it is idle 98.83 % of the time and still misses REQ-CTRL-01, 03 and 04 once per
+second, because any call in the loop blocks every task behind it: 5.98 ms of
+telemetry, 416.11 ms of `calib`, and one 11.50 µs flow interrupt against a
+13.00 µs control margin. Moving to the C6 removed the telemetry block (its UART
+FIFO cuts the call to 110 µs and the idle jitter to 221 µs) but not the cause:
+the next blocking call, `calib`, still runs inside the loop.
+
+**Decision.** One thread per task in rate-monotonic order (sampling 2, control 3,
+flow batch on its own workqueue at 5, display 7, telemetry 8, console 9). ISRs
+only post: `k_msgq` when they carry data, `k_sem` when they only say "go",
+`k_work` for the deferred batch. `main` brings the hardware up and returns.
+
+**Justification (with numbers).** With `calib` running, the worst sampling
+period goes from **403.26 ms** (superloop) to **1.006 ms** (kernel) and the worst
+control period from **411.26 ms** to **10.011 ms**; `backlog_peak` from 403 to 0.
+At idle the kernel holds a sampling jitter of **17.25 µs** against the
+superloop's 221.00 µs, so REQ-CTRL-03 (100 µs) now passes with the worst period
+8.75 µs off the grid. The sampling thread starts at most **16 µs** after its
+tick (`lat_peak_us`), and `ctrl_missed` stays at **0** through a `calib`. The
+blocking command no longer breaks anything: it only delays the console that
+issued it.
+
+**Cost, acknowledged.** Each hand-off costs **14.50 µs** at worst against 0.50 µs
+for the superloop's function call, at most **3.83 %** of the CPU at 2643
+switches/s. Idle jitter is 17.25 µs against the 3.75 µs of the week-3 build
+where only sampling was a thread: the extra wake-ups (console every 5 ms,
+display, telemetry) cost about 13 µs of worst case, which week 5's trace has to
+attribute. The flow batch now starts 35 µs after its 100th pulse instead of
+4 µs, because it waits for a workqueue switch. RAM grows from 51,088 B to
+67,552 B, 9,728 B of it thread stacks, and the stack closest to its limit is
+not one of ours: **`idle` at 228 of 256 B (89 %)**, a size inherited from the
+course `prj.conf`. Shared state (`pressure_mv`, `estop`, `setpoint_mv`) is now
+written and read by different threads without protection, which week 7 has to
+settle. And the analyzer alone no longer explains who preempted whom, which is
+why week 5 adds tracing.
+
+**What it does not fix.** REQ-CTRL-02 (e-stop within 5 ms) still fails: the
+sample that detects overpressure only sets `estop`, and the valve waits for the
+next control run, up to 10.011 ms later. The kernel removed the 411 ms block,
+not that design choice; it is open for module 3.
+
+**Alternatives rejected.** A faster MCU: week 2 measured U = 1.1 %, so cycles are
+not what is missing. Cutting `calib` into cooperative steps inside the loop
+fixes that one command and leaves the next blocking call to break the same
+requirements. Relying on the C6's UART FIFO fixed a property of one driver, not
+the architecture.
 
 ## 3. Evidence by week
 
@@ -455,35 +501,270 @@ to GPIO3-7 and GPIO10, the flow input to GPIO11, and the external valve LED to
 GPIO2. GPIO8 is left unused because it drives the board's addressable WS2812.
 
 The C6 superloop was built and flashed on 2026-09-29, and the generated
-devicetree was checked against this pin map. The sampling-thread variant also
-compiled and its baseline was captured at 4 MHz for 50 s. Linker footprints
-were 133,556 B FLASH / 51,088 B RAM for the superloop and 133,636 B FLASH /
-53,696 B RAM for the thread build. The first serial `status` smoke test
-reported `backlog_peak=4`; this is not a 50-second timing measurement. A valid
-C6 superloop baseline VCD has now been captured at 4 MHz for 50 s:
-`evidencia/lab03/c6/superloop-baseline-50s-4MHz.vcd`. It measures D0 at
-999.859 Hz, D1 at 99.986 Hz, and D3 at 1.000 Hz over 50 telemetry events. The
-sampling-thread baseline VCD,
-`evidencia/lab03/c6/thread-baseline-50s-4MHz.vcd`, shows the same baseline
-frequencies with D6 flat. The remaining C6 timing cells stay blank until their
-matching VCD captures and console transcripts are collected. The flash runner
-reported an 8 MB image setting on a device detected as 4 MB; the superloop image
-flashed and passed hash verification.
+devicetree was checked against this pin map. Linker footprints were 133,556 B
+FLASH / 51,088 B RAM for the superloop and 133,636 B FLASH / 53,696 B RAM for
+the thread build. The flash runner reported an 8 MB image setting on a device
+detected as 4 MB; the superloop image flashed and passed hash verification.
 
 | Measurement | L476RG (week 2) | C6 superloop | C6 + sampling thread |
 |---|---:|---:|---:|
-| Maximum sampling jitter, >= 30 s | measured | **221.00 us** | **221.00 us** |
-| Maximum sampling jitter with `calib` | measured | ____ us | ____ us |
-| `backlog_peak` with `calib` | measured | ____ ticks | ____ ticks |
-| `lat_peak_us` | — | — | ____ us |
-| Maximum control period with `calib` | — | ____ ms | ____ ms |
+| Maximum sampling jitter, >= 30 s | 6753.25 µs | **221.00 µs** | **3.75 µs** |
+| Worst sampling period with `calib` | 416.11 ms | **403.26 ms** | **1.002 ms** |
+| `backlog_peak` with `calib` | 416 ticks | **403 ticks** | **0** |
+| `lat_peak_us` | n/a | n/a | **11 µs** |
+| Maximum control period with `calib` | 425.10 ms | **411.26 ms** | **403.49 ms** |
 
-The C6 superloop is expected to show the same architectural failure as the
-week-2 superloop: `calib` blocks sampling and control while `main` is busy. In
-the threaded build, sampling should continue because the priority-2 thread
-preempts the priority-10 main thread; control can still be delayed because it
-remains in the superloop. Every blank in this table must come from a C6 VCD or
-console capture, never from the S3 or L476 values.
+The L476 column is recomputed from `evidencia/lab02/`, not transcribed: row 1 is
+`max - min` over the 50 s baseline (`baseline-stats.txt`, ROW 2), rows 2 and 5
+come from `calib-flow-stats.txt`, and row 3 from the console transcript. The C6
+columns come from the captures in `evidencia/lab03/c6/` taken on 2026-10-07,
+reduced with the same `vcd_stats.py` and `vcd_calib.py` (`*-stats.txt` beside
+each VCD); rows 3 and 4 come from `status` in the console logs, each of which
+starts with the boot banner of the firmware that produced it.
+
+| Capture (4 MHz, 50 s) | Firmware (banner) | Jumper | Console log |
+|---|---|---|---|
+| `superloop-baseline-50s-4MHz.vcd` | superloop (2026-09-29) | off | `console-session.txt` (smoke test) |
+| `superloop-calib-flow-50s-4MHz.vcd` | `superloop build` | on | `console-superloop-calib.txt` |
+| `thread-baseline-v2-50s-4MHz.vcd` | `sampling-thread build` | off | `console-thread.txt` |
+| `thread-calib-flow-50s-4MHz.vcd` | `sampling-thread build` | on | `console-thread-calib.txt` |
+
+**`thread-baseline-50s-4MHz.vcd` (2026-09-29) is not used.** It reproduces the
+superloop statistics to the quarter microsecond (min 891.75, mean 1000.14, max
+1112.75 µs over 49,992 periods), including 26 samples held back until
+telemetry ends, which a priority-2 thread cannot suffer on this chip:
+`uart_esp32_poll_out` does not lock interrupts and `CONFIG_PRINTK_SYNC` is off
+on a single core. The re-capture with the banner confirmed in the console gives
+**3.75 µs and zero late samples**, so that file was taken with the superloop
+still on the board. It stays in the folder as a record.
+
+All C6 captures show a mean sampling period of 1000.14 µs: the C6 and analyzer
+crystals differ by about 140 ppm. That is why `vcd_stats.py` reports roughly half
+of the control periods as "longer than 10 ms" by a few microseconds in every
+build; those are not deadline misses, and the rows above use maxima.
+
+#### What `calib` does to each build
+
+![Superloop during calib](evidencia/lab03/c6/fig-superloop-calib.svg)
+
+In the superloop, `calib` stops sampling and control together for 403 ms and
+`backlog_peak` reaches 403, the same failure as the L476 (416 ms) on a chip that
+is twice as fast: the 400 ms of `k_busy_wait` belong to the architecture, not to
+the clock.
+
+![Sampling thread during calib](evidencia/lab03/c6/fig-thread-calib.svg)
+
+With sampling in a priority-2 thread, the same command does not touch it: the
+worst period stays at 1.002 ms, jitter at 4.25 µs, `backlog_peak` at 0 and
+`ticks_dropped` at 0. **Control still stops for 403.49 ms**, because it is still
+served by the loop that is busy running `calib`. Moving one task protected that
+task only, which is the argument for week 4 moving all of them.
+
+#### What the 221 µs is
+
+The C6 superloop has no blocked regime at all: zero periods above 1500 µs and
+zero catch-up periods below 500 µs, against 50 and 300 on the L476. All of the
+221 µs comes from 26 single events in 50 s. In each, one sample is released
+**110 µs late**, exactly when the telemetry pulse ends, and the next period is
+short by the same amount, which brings the grid back. It happens whenever a
+telemetry call starts just before a tick is due, and `max - min` counts it twice
+(+112.75 µs, then -108.25 µs). The worst single period is 112.75 µs off the
+1000 µs grid, so REQ-CTRL-03 (100 µs) still fails at idle, but by 13 % instead
+of the L476's 57×.
+
+#### Two silicons, same code (Task B)
+
+The idle maximum fell from 6753.25 µs to 221 µs, and the reason is the UART, not
+the clock. `instr_tele` is **5980.36 µs** wide on the L476 and **109.67 µs** on
+the C6 (mean of 50 each). `uart_stm32_poll_out` waits for `TXE` before every
+character, and the L476's USART holds one byte, so a telemetry line of about
+68 characters (with its `\r\n`) keeps the CPU for about 68 × 86.8 µs = 5.9 ms at
+115200 baud. `uart_esp32_poll_out` only
+waits while the TX FIFO is full, and the C6's FIFO is 128 bytes
+(`SOC_UART_FIFO_LEN`), so the whole line is queued in about 110 µs and leaves the
+pin while the CPU does other work.
+
+The clock shows up in `C_i`, not in the maximum: sampling takes 2.57 µs on the
+C6 at 160 MHz against 4.95 µs on the L476 at 80 MHz, control 0.83 against
+1.35 µs, and the idle utilisation of those three tasks falls from 1.106 % to
+0.276 %. The cache would show up as spread in `C_i`; on the C6 every task's
+pulse width varies by 0.25 µs (one analyzer sample) over 50 s, so at idle the
+hot path never leaves the cache. The maximum is decided by who blocks whom, and a
+FIFO removed one blocker without changing the architecture: `calib` still runs
+inside the loop and still stops it for 403 ms.
+
+#### `backlog_peak` does not mean the same thing in columns 2 and 3
+
+In the superloop it is an unbounded count of ticks that piled up behind a busy
+loop: 416 of them during `calib` on the L476 is a measure of lateness. In the
+thread build it is the occupancy of an 8-deep `k_msgq` posted with
+`K_NO_WAIT`, so it saturates at 8, and an 8 means releases were dropped, not
+"8 ticks late". Column 3 therefore reads lateness from `lat_peak_us`, which has
+no ceiling, and drops from `ticks_dropped`.
+
+### Week 4: the full migration and the A/B (ESP32-C6)
+
+Status: **complete.** Measured on 2026-10-07 on the ESP32-C6, with the week-2
+protocol (4 MHz, 50 s, VCD, the same reduction scripts) and the same eight GPIOs
+as the week-3 superloop. Files in [`evidencia/lab04/`](evidencia/lab04/); the
+session plan is its `README.md`.
+
+| Measurement (C6) | Superloop (week 3) | Kernel (week 4) |
+|---|---:|---:|
+| Maximum sampling jitter, >= 30 s | 221.00 µs | **17.25 µs** |
+| Worst sampling period with `calib` | 403.26 ms | **1.006 ms** (jitter 12.25 µs) |
+| Maximum control period with `calib` | 411.26 ms | **10.011 ms** |
+| ISR to thread latency (`lat_peak_us`) | n/a | **16 µs** |
+| `ctrl_missed` during `calib` | n/a | **0** |
+| Visible context-switch gap (Task C), max | 0.50 µs (function call) | **14.50 µs** |
+| Control thread stack high-water mark | n/a | **236 B / 1024 B** |
+
+| Capture (4 MHz, 50 s) | Firmware (banner) | Jumper | Console log |
+|---|---|---|---|
+| `kernel-baseline-50s-4MHz.vcd` | `kernel build` | off | `console-kernel.txt` |
+| `kernel-calib-flow-50s-4MHz.vcd` | `kernel build` | on | `console-session.txt` (`status`, `calib`, `status`, `threads`) |
+
+The superloop column is the week-3 C6 one (`evidencia/lab03/c6/`). The console
+during captures was driven by
+[`evidencia/lab04/capture_console.py`](evidencia/lab04/capture_console.py), so
+`status` and `calib` land at the same offsets (+5 s, +28 s) in every capture and
+every log starts with the boot banner.
+
+#### Task B: the A/B
+
+![Kernel during calib](evidencia/lab04/fig-kernel-calib.svg)
+
+**The kernel improves the worst case, not just the average.** With `calib`
+running, the worst sampling period drops from 403.26 ms to 1.006 ms and the
+worst control period from 411.26 ms to 10.011 ms: the blocking command now only
+delays the console thread that runs it, at priority 9. `backlog_peak`,
+`ticks_dropped` and `ctrl_missed` all stay at 0. Measured from its release,
+control ends within about 16 + 2.6 + 14.5 + 1.0 ≈ 34 µs (worst `lat_peak_us`,
+sampling `C_i`, the hand-off, control `C_i`), against a 10 ms deadline.
+
+At idle the kernel holds a jitter of 17.25 µs against the superloop's 221.00 µs,
+and the worst period is 8.75 µs off the grid, so **REQ-CTRL-03 (100 µs) now
+passes**, which it did not on either superloop.
+
+The kernel is not free at idle either, and the week-3 build shows by how much
+(`release-lateness.txt`, from
+[`vcd_release_lateness.py`](evidencia/lab04/vcd_release_lateness.py)). With
+only sampling in a thread the jitter was 3.75 µs and no release came more than
+2.2 µs late against a fitted 1 ms grid. With every task in a thread, 506
+releases in 50 s (about 10 per second) come more than 4 µs late, the worst
+9.10 µs. The difference is the wake-ups the full kernel adds (console every
+5 ms, display every 50 ms, telemetry every second), whose timeouts the kernel
+processes in the same timer interrupt as the sampling tick. One clue for the
+trace: all 506 late releases are odd-numbered, a 2 ms pattern that none of
+those periods has on its own. Which wake-up it is cannot be read from GPIO; it
+is the first question for week 5.
+
+The flow batch shows the same trade: it starts 35 µs after its 100th pulse,
+against 4 µs in the superloop, because the ISR now submits work that waits for a
+switch to `flow_wq`. Bounded and independent of what else runs, but slower.
+
+#### Task A: every task gets a thread
+
+The node is our own app in [`firmware/kernel/`](firmware/kernel/), built from
+the week-3 sampling-thread version. The course's reference
+(`firmware/kernel/` in the course repo) was used only as a cross-check
+afterwards; the thread plan is the same.
+
+| Thread | Runs | Woken by | Priority | Stack |
+|---|---|---|---|---|
+| `sampling_thread` | `task_sampling` | `tick_q` (`k_msgq`, release time) | 2 | 1536 |
+| `control_thread` | `task_control` | `control_sem` (`k_sem`), given every 10th sample | 3 | 1024 |
+| `flow_wq` (own workqueue) | `task_flow_batch` | flow ISR, once 100 pulses have piled up | 5 | 1024 |
+| `display_thread` | `task_display` | `k_msleep(50)` | 7 | 2048 |
+| `telemetry_thread` | `task_telemetry` | absolute sleep, `next += 1000` ms | 8 | 2048 |
+| `console_thread` | `task_console` | `k_msleep(5)` between polls | 9 | 2048 |
+| `main` | bring-up, starts the timer, returns | | 0 | 1536 |
+
+The task bodies and the eight GPIOs are the week-3 ones (same overlay, same
+telemetry line, so the same UART time), which keeps the A/B a comparison of
+architectures. Three choices behind the plan:
+
+- `CONFIG_MAIN_THREAD_PRIORITY=10` is gone. At the default 0, `main` outranks
+  every thread, so `init_hw()` finishes before any of them touches a pin.
+- The flow batch runs on a workqueue of its own at priority 5. Zephyr's system
+  workqueue runs at -1, which is cooperative, and sampling could not preempt a
+  batch running there.
+- Every thread blocks. A console that polled without sleeping would own every
+  cycle below priority 9, the idle thread included.
+
+One deliberate difference from the reference: **`control_sem` has a limit of 1**
+and the sampling thread counts `ctrl_missed` when a give finds the count already
+at 1. That case means the previous control release never started within its
+10 ms, which is a deadline miss of REQ-CTRL-01 (D = T), so the firmware counts
+it instead of queueing a second run on stale data.
+
+Before the board: `build-c6.txt` (0 warnings, all eight nodes resolved from our
+overlay, FLASH 134,132 B and RAM 67,552 B against the superloop's 133,556 B and
+51,088 B; 9,728 B of the 16,464 B of extra RAM are the declared thread stacks)
+and `native-sim-session.txt` (telemetry exactly 1000 ms apart, `status`, `calib`
+running while telemetry and control carry on). `native_sim` does not model
+execution time, so it proved behaviour, not timing. On the board, `status`
+answers, telemetry arrives every 1000.14 ms (the 140 ppm crystal offset of
+week 3) and pressure tracks the 1500 mV setpoint (`console-session.txt`).
+
+#### Task C: what a switch costs
+
+![Kernel hand-off](evidencia/lab04/fig-kernel-ctx-gap.svg)
+
+The gap from `instr_samp` falling to `instr_ctrl` rising, measured by
+[`evidencia/lab04/vcd_ctx_gap.py`](evidencia/lab04/vcd_ctx_gap.py) over all
+4999 control releases of each capture:
+
+| | min | mean | max |
+|---|---:|---:|---:|
+| Superloop (function call), C6 | 0.25 µs | 0.50 µs | 0.50 µs |
+| Kernel, idle | 14.00 µs | 14.26 µs | **14.50 µs** |
+| Kernel, with `calib` and flow | 13.75 µs | 14.19 µs | **14.50 µs** |
+
+The switch costs the same with or without load, which is what a fixed kernel
+path should look like: at 160 MHz, 14.5 µs is about 2300 cycles for `k_sem_give`,
+`k_msgq_get`, the scheduler, the context save and restore, and the two GPIO
+writes at either end.
+
+At this load the node wakes about 1321 times per second (sampling 1000, console
+200, control 100, display 20, telemetry 1, flow batch 0.5). Counting a switch in
+and a switch out per wake-up:
+
+    2643 switches/s × 14.50 µs = 38.3 ms per second = 3.83 % of the CPU
+
+It is an upper bound: the gap also holds the two kernel calls, and the sampling
+to control hand-off shares one switch instead of two. The thread analyzer agrees
+from the other side: it puts `idle` at 97 % of the CPU since boot, so everything
+that is not idle, switches included, adds up to about 3 %.
+
+#### Task D: stack high-water marks
+
+`threads` (a console command that calls `thread_analyzer_print(0)`, since the
+console owns the UART) was issued right after the `calib` capture, with the flow
+jumper still on, so every thread had run its deepest path at least once:
+
+| Thread | Used / size | % |
+|---|---:|---:|
+| `idle` | 228 / 256 B | **89 %** |
+| `sysworkq` | 272 / 512 B | 53 % |
+| ISR stack | 244 / 512 B | 47 % |
+| `console_tid` | 836 / 2048 B | 40 % |
+| `flow_wq` | 268 / 1024 B | 26 % |
+| `telemetry_tid` | 516 / 2048 B | 25 % |
+| `control_tid` | 236 / 1024 B | 23 % |
+| `sampling_tid` | 324 / 1536 B | 21 % |
+| `display_tid` | 220 / 2048 B | 10 % |
+
+**The thread closest to its limit is not one of ours: `idle`, with 28 B left.**
+Its 256 B come from `CONFIG_IDLE_STACK_SIZE=256` in the course `prj.conf`,
+sized for a superloop where idle never ran; in the kernel it runs 97 % of the
+time, and every interrupt that lands while the CPU is idle saves its register
+frame on idle's stack. Raising it to 512 B is the first fix. Our own threads use at most 40 %, and that peak is the
+console's, partly caused by the analyzer itself, which prints from the console
+thread. The display and telemetry stacks (2048 B) could shrink to half, but
+the display has no HMI on this board yet, so we leave them until it does.
+
+Full output: `evidencia/lab04/console-session.txt`.
 
 ## 4. Schedulability analysis
 

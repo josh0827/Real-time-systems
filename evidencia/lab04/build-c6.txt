@@ -1,0 +1,30 @@
+Week 4 Task A: build verification, ESP32-C6-DevKitC (esp32c6_devkitc/esp32c6/hpcore)
+Date: 2026-10-07   Zephyr: v4.4.0-13771-gb9df9f46ae4
+App: firmware/kernel (this repo)
+
+$ west build -p -b esp32c6_devkitc/esp32c6/hpcore --build-dir build-lab04-c6-kernel firmware/kernel
+-- Found devicetree overlay: ~/ret-equipo/firmware/kernel/boards/esp32c6_devkitc_hpcore.overlay
+Memory region         Used Size  Region Size  %age Used
+           FLASH:      134132 B    8388352 B      1.60%
+     sram0_0_seg:       67552 B     509456 B     13.26%
+     irom0_0_seg:       15808 B         8 MB      0.19%
+     drom0_0_seg:        3060 B         8 MB      0.04%
+
+Compiler warnings: 0
+
+Devicetree check: every application node must come from the overlay
+(the build also succeeds without it, and then the analyzer shows flat lines).
+
+gpios = < &gpio0 0x2 0x0 >; /* in firmware/kernel/boards/esp32c6_devkitc_hpcore.overlay:18 */
+gpios = < &gpio0 0x3 0x0 >; /* in firmware/kernel/boards/esp32c6_devkitc_hpcore.overlay:23 */
+gpios = < &gpio0 0x4 0x0 >; /* in firmware/kernel/boards/esp32c6_devkitc_hpcore.overlay:24 */
+gpios = < &gpio0 0x5 0x0 >; /* in firmware/kernel/boards/esp32c6_devkitc_hpcore.overlay:25 */
+gpios = < &gpio0 0x6 0x0 >; /* in firmware/kernel/boards/esp32c6_devkitc_hpcore.overlay:26 */
+gpios = < &gpio0 0x7 0x0 >; /* in firmware/kernel/boards/esp32c6_devkitc_hpcore.overlay:27 */
+gpios = < &gpio0 0xa 0x0 >; /* in firmware/kernel/boards/esp32c6_devkitc_hpcore.overlay:28 */
+gpios = < &gpio0 0xb 0x20 >; /* in firmware/kernel/boards/esp32c6_devkitc_hpcore.overlay:34 */
+
+Footprint against week 3 (evidencia/lab03/c6/footprint.txt), FLASH / RAM (sram0_0_seg):
+  superloop        133556 B / 51088 B
+  sampling thread  133636 B / 53696 B
+  kernel (week 4)  134132 B / 67552 B
