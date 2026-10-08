@@ -728,3 +728,273 @@ argument for threads has to be paid for in something.
 - Confirm the HMI really talks on GPIO8/GPIO9 with the analyzer, since that fix
   is reasoned from the board files and not yet observed.
 - Still pending from entry 02: add David and Ismael as collaborators here.
+
+---
+
+## Entry 04: Week 4 the full migration and the A/B (and week 3 closed on the C6)
+
+**Date:** 2026-10-07 · **Lab:** `labs/lab04_ipc.md`, plus the missing cells of `labs/lab03_port.md` · **Author:** Joshua
+· **Board:** ESP32-C6-DevKitC (`esp32c6_devkitc/esp32c6/hpcore`) · **Team:** Joshua, David Henao Rojas, Ismael Cortés Ramírez
+
+### Goal
+
+Move every task of the node into its own thread or deferred work (Task A),
+repeat the week-2 protocol on it to get the superloop-versus-kernel A/B with
+maxima, not averages (Task B), measure what a context switch costs (Task C), and
+measure every thread's stack high-water mark under load (Task D), because, in
+Samuel's words, threads bring context switches but they also bring stack
+overflows. Since the S3 never arrived and Ismael had ported week 3 to the C6
+(PR #1), the same session also had to close week 3 on the C6, whose `calib`
+captures were missing and whose A side the A/B depends on.
+
+<details>
+<summary><b>Setup</b></summary>
+
+- WSL2 `Ubuntu-24.04`, Zephyr v4.4.0, venv at `~/zephyrproject/.venv`. Course
+  repo pulled to `38959a8`, which brought the professor's week-4 reference
+  (`firmware/kernel/`), used only as a cross-check after writing ours.
+- ESP32-C6-DevKitC on its CH343 UART port, attached to WSL with
+  `conectar-esp32.cmd` (`/dev/ttyACM0`). Flashing with `west flash --build-dir`.
+- Analyzer `0925:3881` in PulseView, `fx2lafw`, 4 MHz, 200 M samples (50 s),
+  D0..D6 on GPIO3, 4, 5, 6, 7, 10, 11. Self-stimulus jumper GPIO2 to GPIO11 for
+  the flow and `calib` captures.
+- Three firmwares built in advance so the session was only flash and capture:
+  `build-lab03-c6-superloop` (byte for byte the size Ismael measured),
+  `build-lab03-c6-thread` and `build-lab04-c6-kernel`, each with its own boot
+  banner so the console proves which one is on the board.
+
+</details>
+
+<details>
+<summary><b>What we did</b></summary>
+
+**1. Task A, without the board.** `firmware/kernel/` in this repo, built from
+the week-3 sampling-thread version. Six threads in rate-monotonic order
+(sampling 2, control 3, own workqueue for the flow batch at 5, display 7,
+telemetry 8, console 9), `main` back to priority 0, every thread blocking. One
+choice of ours: `control_sem` has a limit of 1 and the firmware counts
+`ctrl_missed` when a release finds the previous one still pending. Checked with
+a C6 build (0 warnings, devicetree dump) and a `native_sim` run
+(`evidencia/lab04/build-c6.txt`, `native-sim-session.txt`).
+
+**2. Five captures in one sitting**, each with a console log that starts with the
+banner:
+
+| # | Firmware | Jumper | Closes |
+|---|---|---|---|
+| 1 | superloop | on, `calib` | week 3, and side A of the A/B |
+| 2 | sampling thread | off | week 3 (replaces the invalid capture) |
+| 3 | sampling thread | on, `calib` | week 3 |
+| 4 | kernel | off | week 4, side B at idle |
+| 5 | kernel | on, `calib`, then `threads` | week 4, side B, Tasks C and D |
+
+```bash
+cd ~/zephyrproject && source .venv/bin/activate
+west flash --build-dir build-lab04-c6-kernel
+python ~/ret-equipo/evidencia/lab04/capture_console.py \
+    ~/ret-equipo/evidencia/lab04/console-session.txt calib-threads
+# press RST, wait for "Jumper OK", Enter, then Run in PulseView
+```
+
+**3. Reduction** with the week-2 scripts plus two new ones
+(`vcd_ctx_gap.py` for Task C, `vcd_release_lateness.py` for the idle jitter),
+and figures with `vcd_plot.py`. Every number in RET §3 weeks 3 and 4 has its
+output file beside the VCD it came from.
+
+</details>
+
+<details>
+<summary><b>Task D: stack monitoring, and what it can and cannot say about overflows</b></summary>
+
+**What we measured.** `CONFIG_THREAD_ANALYZER=y` plus a `threads` console
+command (the node has no shell, the console owns the UART) that calls
+`thread_analyzer_print(0)`. It was issued right after capture 5, with the flow
+jumper on and one `calib` done, so the flow batch, telemetry, console and both
+hard threads had all run their deepest paths at least once:
+
+| Thread | Size | Where the size comes from | Used | % | Margin |
+|---|---:|---|---:|---:|---:|
+| `idle` | 256 B | course `prj.conf` (`CONFIG_IDLE_STACK_SIZE`) | 228 B | **89 %** | **×1.1** |
+| `sysworkq` | 512 B | course `prj.conf` (`CONFIG_SYSTEM_WORKQUEUE_STACK_SIZE`) | 272 B | 53 % | ×1.9 |
+| ISR stack | 512 B | course `prj.conf` (`CONFIG_ISR_STACK_SIZE`) | 244 B | 47 % | ×2.1 |
+| `console_tid` | 2048 B | lab 4 guide, Task A table | 836 B | 40 % | ×2.4 |
+| `flow_wq` | 1024 B | lab 4 guide, Task A table | 268 B | 26 % | ×3.8 |
+| `telemetry_tid` | 2048 B | lab 4 guide, Task A table | 516 B | 25 % | ×4.0 |
+| `control_tid` | 1024 B | lab 4 guide, Task A table | 236 B | 23 % | ×4.3 |
+| `sampling_tid` | 1536 B | lab 4 guide, Task A table | 324 B | 21 % | ×4.7 |
+| `display_tid` | 2048 B | lab 4 guide, Task A table | 220 B | 10 % | ×9.3 |
+
+Margin is size divided by the high-water mark. In our code the thread sizes are
+the `#define ..._STACK` values in `firmware/kernel/src/main.c`, copied from the
+guide; the other three are in `firmware/kernel/prj.conf`, inherited unchanged
+from the course superloop.
+
+**Why nothing came close: the sizes were not ours, and they are generous.** A
+stack size is not a limit that protects anything. It is a fixed block of RAM
+reserved when the thread is created, and a thread that needs more simply keeps
+writing past its end into whatever memory follows; without a guard nothing
+stops it. So the question is not whether a limit held, but whether each
+reservation covers what the thread actually uses. Ours do, by a factor of 2.4
+to 9.3, because our tasks are shallow: one task function, one driver call, the
+kernel below it, and almost no large locals. The two deepest are exactly the
+two that format text: telemetry (`char line[96]` plus what `snprintf` uses
+inside) and the console (`printk`, and the analyzer printing from it). The
+guide's sizes are a deliberately generous starting point, and Task D exists to
+replace them with measured ones.
+
+The one reservation nobody sized for a kernel is `idle`. Its 256 B made sense in
+the superloop, where `main` never sleeps and idle never runs. Here it is the
+thread that runs most and that every interrupt arriving at idle lands on, and it
+has 28 B to spare. That is the real risk in this build, and why the first fix is
+512 B.
+
+The table also says how much RAM could be returned (the display would fit in
+512 B), but shrinking stacks is only safe with overflow detection on, so that a
+stack cut too short faults immediately instead of corrupting memory. It goes
+after the guard build below, not before.
+
+**Did anything overflow? Not in this run, and we can say why.** The analyzer
+works because `CONFIG_INIT_STACKS=y` fills every stack with `0xaa` at creation;
+"unused" is how many bytes at the far end of the stack still hold that pattern.
+Every thread reports unused > 0, so no stack reached its end during the run.
+The closest is `idle`, with 28 B left. It is not ours: its 256 B come from
+`CONFIG_IDLE_STACK_SIZE=256` in the course `prj.conf`, sized for a superloop
+where idle never ran. In the kernel it runs 97 % of the time, and every
+interrupt that lands while the CPU is idle saves its register frame on idle's
+stack. Ours peak at 40 %, and that peak is the console's, partly caused by the
+analyzer itself, which prints from the console thread.
+
+**What it cannot say.** Three limits worth writing down before anyone quotes
+"no overflows" as a guarantee:
+
+1. **A high-water mark only covers the paths that ran.** The HMI is not wired on
+   this board (no display), the e-stop and joystick paths never fired, and no
+   console command was mistyped. Any of those can go deeper.
+2. **Nothing in this build would have caught an overflow.** The `.config` has
+   `CONFIG_HW_STACK_PROTECTION` and `CONFIG_STACK_SENTINEL` both off. An
+   overflow would not stop the node: it would silently overwrite whatever sits
+   next to the stack, and the analyzer would only show it afterwards as 0 bytes
+   unused, if the node survived long enough to answer `threads`.
+3. **One sample, one run.** The marks are from one 50 s capture plus boot.
+
+**What the C6 offers.** It has a RISC-V PMP (`CONFIG_RISCV_PMP=y`,
+`CONFIG_ARCH_HAS_STACK_PROTECTION=y`), so hardware stack guards are available.
+A build with `-DCONFIG_HW_STACK_PROTECTION=y -DCONFIG_IDLE_STACK_SIZE=512`
+compiles clean, enables `CONFIG_PMP_STACK_GUARD=y`, and costs 6,464 B of RAM
+(74,016 B against 67,552 B), mostly guard regions. With it, an overflow becomes
+an immediate fault naming the thread, instead of silent corruption. It is in
+`~/zephyrproject/build-lab04-c6-guard`, built but not flashed: the week-4
+numbers were measured without it, so turning it on belongs to the next session,
+with a re-measure.
+
+</details>
+
+<details>
+<summary><b>Problem 1: Ismael's sampling-thread baseline had been taken with the superloop on the board</b></summary>
+
+`thread-baseline-50s-4MHz.vcd` (2026-09-29) matched the superloop capture to the
+quarter microsecond: min 891.75, mean 1000.14, max 1112.75 µs over 49,992
+periods, including 26 samples held back exactly until telemetry ended (110 µs).
+A priority-2 thread cannot wait for priority-10 telemetry on the C6:
+`uart_esp32_poll_out` takes no lock and `CONFIG_PRINTK_SYNC` is off on a single
+core. His `footprint.txt` also said the thread build was never flashed.
+
+Re-captured with the `sampling-thread build` banner confirmed in the console:
+**3.75 µs** of jitter and zero samples held back. The old file stays in the
+folder as a record. Rule we keep from this: every capture gets a console log
+that starts with the boot banner, which is what `capture_console.py` enforces.
+
+</details>
+
+<details>
+<summary><b>Problem 2: the first capture was taken at 20 kHz, with every probe one channel off</b></summary>
+
+Capture 1 came back as a 133 KB VCD whose header read
+`Acquisition with 8/8 channels at 20 kHz`. At 20 kHz the analyzer samples every
+50 µs and misses most of the 2.5 µs sampling pulses. PulseView had gone back to
+its default rate. A valid 50 s capture at 4 MHz is about 1.8 MB, so the file
+size alone gives it away.
+
+Identifying each channel by its signature (1 kHz train, 1 in 10, 1 Hz, 0.5 Hz,
+50 Hz) showed every probe one channel up: sampling on D1, flow input on D7, D0
+floating high. All reduction scripts read sampling from D0. Fix: move every
+probe down one channel, then check on a 1 s capture that D0 is the dense 1 kHz
+train before the real one.
+
+</details>
+
+<details>
+<summary><b>Problem 3: typing commands by hand while telemetry scrolls</b></summary>
+
+With miniterm open, one telemetry line per second interleaves with the echo of
+what is typed. Three of the first commands arrived wrong (`? (try: help)`), and
+the timing of `calib` inside the 50 s window depended on switching focus from
+PulseView to the terminal at the right second.
+
+Fix: `evidencia/lab04/capture_console.py`. It waits for the banner after RST,
+checks the jumper with two `status` (batches must go up), and after one Enter
+sends `status` at +5 s, `calib` at +28 s, `status` after `calibration done`,
+and optionally `threads` at the end. The commands now land at the same offsets
+in every capture. Tested first against a fake node on a pseudo-terminal,
+because `native_sim` sends printk to stdout, not to its UART pty.
+
+</details>
+
+<details>
+<summary><b>Problem 4: the C6 thread patch does not apply with <code>patch</code></b></summary>
+
+`evidencia/lab03/c6/lab03-task-c.patch` has a hunk header that counts 41 added
+lines where the hunk has 38 (it was edited by hand to add `ticks_dropped`). GNU
+`patch` and an out-of-repo `git apply` reject it as corrupt. It applies with:
+
+```bash
+git apply --recount -p3 ~/ret-equipo/evidencia/lab03/c6/lab03-task-c.patch
+```
+
+</details>
+
+<details>
+<summary><b>Problem 5: <code>vcd_stats.py</code> crashed on every C6 capture</b></summary>
+
+It divided by the number of "blocked by telemetry" periods, which was 50 on the
+L476 and is 0 on the C6, whose UART FIFO removed the block. Guarded, and its
+output for the L476 captures is unchanged (checked with `diff` against
+`baseline-stats.txt`). `vcd_calib.py` now takes the baseline to compare against
+as an argument, and `vcd_plot.py` takes a board label, skips normal 1 ms
+periods, and has a zoom mode for one control release; `fig-calib-416ms.svg`
+regenerates byte for byte.
+
+</details>
+
+### Result
+
+| | Superloop (C6) | Kernel (C6) |
+|---|---:|---:|
+| Worst control period with `calib` | 411.26 ms | **10.011 ms** |
+| Worst sampling period with `calib` | 403.26 ms | **1.006 ms** |
+| `backlog_peak` / `ctrl_missed` with `calib` | 403 / n/a | **0 / 0** |
+| Sampling jitter at idle | 221.00 µs | **17.25 µs** |
+| Context-switch gap (Task C) | 0.50 µs | **14.50 µs** |
+| Tightest stack (Task D) | n/a | **`idle`, 228 / 256 B** |
+
+ADR-001 (multithreaded kernel) is accepted on these numbers. Week 3 on the C6 is
+closed too: with sampling in a thread, `calib` no longer touches sampling
+(jitter 4.25 µs) but control still stops for 403.49 ms, which is the case for
+moving every task.
+
+### Open items
+
+- **Turn stack overflow detection on**: flash `build-lab04-c6-guard`
+  (`CONFIG_HW_STACK_PROTECTION=y`, `CONFIG_IDLE_STACK_SIZE=512`), re-run
+  `threads` under load, and re-measure the A/B row for idle jitter to see what
+  the PMP guards cost in time, not only in RAM.
+- **Week 5 trace**: the kernel has 506 sampling releases per 50 s more than
+  4 µs late at idle, all of them odd-numbered. None of the designed wake-ups has
+  a 2 ms period on its own.
+- **REQ-CTRL-02** (e-stop within 5 ms) still fails: the valve waits for the next
+  control run, up to 10.011 ms.
+- Our S3 overlay (`evidencia/lab03/s3/`) moved i2c0 to GPIO8/9; on 2026-09-30 the
+  professor fixed the same clash the other way (i2c0 stays on GPIO1/2, the pot
+  moves to GPIO8/9). If anyone uses the S3, the overlay has to follow his.
+- On the C6, the board's `i2c0` sits on GPIO6/7, the pins of `instr_tele` and
+  `instr_flow`. The HMI cannot be added without moving one of the two.
